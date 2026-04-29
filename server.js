@@ -115,6 +115,13 @@ app.use('/api/plugin', require('./routes/plugin'));
 // see the comment up there for why the order matters.
 app.use('/api/admin', adminRouter);
 
+// Cloudflare Tunnel admin endpoints (v0.3.0+). Mounted as a sibling of
+// /api/admin/backup — has its own router file because it shells out to
+// system commands (dpkg, systemctl, cloudflared) and that's enough
+// surface area to warrant separation from the main admin router. Auth
+// is applied at the mount point, same pattern as backup.
+app.use('/api/admin/cloudflared', adminRouter.requireAdmin, require('./routes/cloudflared'));
+
 // Public viewer API
 app.use('/api', require('./routes/viewer'));
 

@@ -16,6 +16,8 @@ SERVICE_NAME="showpilot-lite"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 CLOUDFLARED_SERVICE_FILE="/etc/systemd/system/cloudflared.service"
 CLOUDFLARED_BIN="/usr/bin/cloudflared"
+CLOUDFLARED_TOKEN_FILE="/etc/cloudflared/token"
+CLOUDFLARED_TOKEN_DIR="/etc/cloudflared"
 
 echo "[uninstall] Stopping ShowPilot-Lite..."
 if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
@@ -46,8 +48,10 @@ fi
 if [ -f "$CLOUDFLARED_SERVICE_FILE" ] && [ -x "$CLOUDFLARED_BIN" ]; then
     echo "[uninstall] Stopping cloudflared service (Public Access tunnel)..."
     sudo systemctl stop cloudflared 2>/dev/null || true
+    # Pre-v0.3.1 installs used `cloudflared service install` so they need
+    # `cloudflared service uninstall`. v0.3.1+ wrote our own unit, which
+    # cloudflared's uninstall doesn't recognize — covered by the rm below.
     sudo "$CLOUDFLARED_BIN" service uninstall 2>/dev/null || true
-    # service uninstall is conservative; force-remove the unit if it survived
     if [ -f "$CLOUDFLARED_SERVICE_FILE" ]; then
         sudo rm -f "$CLOUDFLARED_SERVICE_FILE"
         sudo systemctl daemon-reload
@@ -55,6 +59,16 @@ if [ -f "$CLOUDFLARED_SERVICE_FILE" ] && [ -x "$CLOUDFLARED_BIN" ]; then
     echo "[uninstall] Note: cloudflared binary was kept for future reinstalls."
     echo "[uninstall] To fully remove it: sudo apt-get remove -y cloudflared"
 fi
+
+# Remove the tunnel token file (v0.3.1+). We always try this even if the
+# service wasn't running — better to leave no creds behind. -f makes rm
+# silent on missing files.
+if [ -f "$CLOUDFLARED_TOKEN_FILE" ]; then
+    echo "[uninstall] Removing tunnel token file..."
+    sudo rm -f "$CLOUDFLARED_TOKEN_FILE"
+fi
+# Remove dir if empty (best-effort).
+sudo rmdir "$CLOUDFLARED_TOKEN_DIR" 2>/dev/null || true
 
 echo "[uninstall] Done. Note: data is preserved at"
 echo "  /home/fpp/media/plugindata/ShowPilot-Lite/"

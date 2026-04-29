@@ -19,36 +19,41 @@ If you need HTTP audio for viewers (cars without FM, etc.), use the full [ShowPi
 
 ## Install
 
-ShowPilot-Lite installs as an FPP plugin. *(Plugin packaging — `pluginInfo.json`, `fpp_install.sh`, systemd unit — is forthcoming in v0.2.0. v0.1.0 is the stripped Node app; install manually as below until then.)*
+ShowPilot-Lite installs as an FPP plugin. From FPP's web UI:
 
-### Manual install (v0.1.0)
+1. Open **Content Setup → Plugin Manager**
+2. Either find **ShowPilot-Lite** in the list (once published to the FPP plugin registry), or scroll to the **Manual Add** section and paste:
+   ```
+   https://raw.githubusercontent.com/ShowPilotFPP/ShowPilot-Lite/main/pluginInfo.json
+   ```
+3. Click **Install**. FPP will clone the repo and run the install script, which:
+   - Installs Node 18 from NodeSource if not already present
+   - Compiles native dependencies (`better-sqlite3`)
+   - Sets up a data directory at `/home/fpp/media/plugindata/ShowPilot-Lite/` (backed up by FPP's own backup feature)
+   - Drops a `systemd` unit and starts the service on port 3100
+4. After install completes, click **Restart FPPD** when prompted, then look for the **ShowPilot-Lite** entry under FPP's **Content Setup** menu — it opens the admin UI in a new tab.
+5. First login: `admin` / `admin`. You'll be prompted to set a password immediately.
 
-On the FPP host, as root or via `sudo`:
+### Manual install (for development / non-plugin-manager use)
+
+If you want to run Lite outside FPP's plugin manager:
 
 ```bash
 # 1. Install Node 18 if not present
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-apt-get install -y nodejs
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-# 2. Fetch ShowPilot-Lite
-mkdir -p /home/fpp/media/plugins
-cd /home/fpp/media/plugins
+# 2. Clone and install
 git clone https://github.com/ShowPilotFPP/ShowPilot-Lite.git
 cd ShowPilot-Lite
-
-# 3. Install Node deps (compiles better-sqlite3 against host Node)
 npm install --omit=dev
 
-# 4. Copy config template
+# 3. Copy config template, edit if needed
 cp config.example.js config.js
 
-# 5. Run it
+# 4. Run
 node server.js
 ```
-
-Visit `http://<fpp-ip>:3100` — log in with `admin` / `admin` and you'll be prompted to set a password.
-
-For background-on-boot, drop a systemd unit (forthcoming as part of v0.2.0 plugin packaging).
 
 ## Pairing with PulseMesh
 

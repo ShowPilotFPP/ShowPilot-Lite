@@ -1,0 +1,23 @@
+{
+  "repoName": "ShowPilot-Lite",
+  "name": "ShowPilot-Lite",
+  "author": "ShowPilot Project",
+  "description": "FPP-resident voting / jukebox / now-playing display from the ShowPilot Project. Audio streaming is intentionally absent — pair with PulseMesh, FM, or Icecast for audio delivery.",
+  "homeURL": "https://github.com/ShowPilotFPP/ShowPilot-Lite",
+  "srcURL": "https://github.com/ShowPilotFPP/ShowPilot-Lite.git",
+  "bugURL": "https://github.com/ShowPilotFPP/ShowPilot-Lite/issues",
+  "allowUpdates": 1,
+  "versions": [
+    {
+      "minFPPVersion": "8.0",
+      "maxFPPVersion": "0",
+      "branch": "main",
+      "sha": "",
+      "dependencies": {
+        "plugins": [],
+        "packages": [],
+        "scripts": []
+      }
+    }
+  ]
+}

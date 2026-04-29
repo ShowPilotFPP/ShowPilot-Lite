@@ -164,7 +164,11 @@ User=fpp
 Group=fpp
 WorkingDirectory=${PLUGIN_DIR}
 ExecStart=/usr/bin/node ${PLUGIN_DIR}/server.js
-Restart=on-failure
+# Restart=always (not on-failure) is required because the backup-restore
+# flow exits cleanly (process.exit(0)) to pick up new secrets — that's a
+# successful exit, which on-failure wouldn't restart. always covers both
+# the crash case and the intentional-restart case.
+Restart=always
 RestartSec=5
 StandardOutput=append:/home/fpp/media/logs/showpilot-lite.log
 StandardError=append:/home/fpp/media/logs/showpilot-lite.log

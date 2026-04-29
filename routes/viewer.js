@@ -563,6 +563,18 @@ router.get('/now-playing', (req, res) => {
     playerCustomColor: cfg.player_custom_color || '',
     showPlayerBar: cfg.viewer_show_player_bar !== 0,
   };
+
+  // OFF-mode rule (v0.4.1+): when viewer control is off, the show is
+  // hands-off from ShowPilot's perspective — no votes, no requests, no
+  // PSAs, AND no now-playing display. The viewer page should look quiet,
+  // not surface a player bar implying ShowPilot is active. We return
+  // playing:false so the client's existing hideBar() path runs (no
+  // client change needed). Visual config still flows through so themes
+  // remain consistent if/when the bar reappears later.
+  if (cfg.viewer_control_mode === 'OFF') {
+    return res.json({ playing: false, ...visualConfig });
+  }
+
   if (!np || !np.sequence_name) {
     return res.json({ playing: false, ...visualConfig });
   }

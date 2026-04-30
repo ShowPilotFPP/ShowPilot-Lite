@@ -1,5 +1,7 @@
 # ShowPilot-Lite
 
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20chat-5865F2?logo=discord&logoColor=white)](https://discord.gg/UpmcXmWfN9) [![Facebook](https://img.shields.io/badge/Facebook-Join%20the%20group-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/groups/showpilot)
+
 **FPP-resident build of [ShowPilot](https://github.com/ShowPilotFPP/ShowPilot).** Runs on the same host as Falcon Player and provides voting, jukebox, and a now-playing display for visitors. **Audio streaming is removed** — this is the right pick for shows delivering audio externally (PulseMesh, FM transmitter, Icecast, etc.) where ShowPilot doesn't need to host audio bytes.
 
 ## What's different from ShowPilot main

@@ -216,7 +216,10 @@ router.put('/config', requireAdmin, (req, res) => {
     // Viewer player decoration (now-playing bar styling)
     'player_decoration',
     'player_decoration_animated',
-    'page_snow_enabled',
+    'page_snow_enabled',           // legacy; kept whitelisted so older admin tabs / backups still round-trip
+    'page_effect',                 // 'none' | 'snow' | 'leaves' | 'fireworks' | 'hearts' | 'stars' | 'bats' | 'confetti' | 'petals' | 'embers' | 'bubbles' | 'rain'
+    'page_effect_color',
+    'page_effect_intensity',
     'player_custom_color',
     'viewer_show_player_bar',
     'viewer_source_obfuscate',

@@ -579,7 +579,10 @@ router.get('/visual-config', (req, res) => {
   }
 
   res.json({
-    pageSnowEnabled: cfg.page_snow_enabled === 1,
+    pageSnowEnabled: cfg.page_snow_enabled === 1 || cfg.page_effect === 'snow',
+    pageEffect: cfg.page_effect || (cfg.page_snow_enabled === 1 ? 'snow' : 'none'),
+    pageEffectColor: cfg.page_effect_color || '',
+    pageEffectIntensity: cfg.page_effect_intensity || 'medium',
     playerDecoration: cfg.player_decoration || 'none',
     playerDecorationAnimated: cfg.player_decoration_animated !== 0,
     playerCustomColor: cfg.player_custom_color || '',
@@ -599,7 +602,10 @@ router.get('/now-playing', (req, res) => {
   // viewer page polls this endpoint as a single source of truth for both
   // "what's playing right now" and "how should the bar look."
   const visualConfig = {
-    pageSnowEnabled: cfg.page_snow_enabled === 1,
+    pageSnowEnabled: cfg.page_snow_enabled === 1 || cfg.page_effect === 'snow',
+    pageEffect: cfg.page_effect || (cfg.page_snow_enabled === 1 ? 'snow' : 'none'),
+    pageEffectColor: cfg.page_effect_color || '',
+    pageEffectIntensity: cfg.page_effect_intensity || 'medium',
     playerDecoration: cfg.player_decoration || 'none',
     playerDecorationAnimated: cfg.player_decoration_animated !== 0,
     playerCustomColor: cfg.player_custom_color || '',

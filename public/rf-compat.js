@@ -13,6 +13,13 @@
   const boot = window.__SHOWPILOT__ || {};
   let cachedLocation = null;
   let hasVoted = false;
+  // Vote shifting (v0.5.6+): when allowVoteChange is true, a user who has
+  // already voted can click another song to switch. Track which song they
+  // last voted for so we can no-op a click on the same one and show
+  // friendlier feedback ("Vote changed" vs. "Vote cast").
+  // allowVoteChange is read from boot first and refreshed on every /api/state.
+  let votedFor = null;
+  let allowVoteChange = !!boot.allowVoteChange;
   // Last-known voting round id, refreshed on every /api/state response.
   // When this changes (server advanced past our vote), we clear hasVoted
   // so the user can vote in the new round. Backup mechanism for
@@ -228,8 +235,18 @@
       }
     }
     if (hasVoted) {
-      showMessage(MSG_IDS.alreadyVoted);
-      return;
+      // Vote shifting: if the admin allows changing votes, let the click
+      // through so the server can swap. Otherwise the existing block.
+      if (!allowVoteChange) {
+        showMessage(MSG_IDS.alreadyVoted);
+        return;
+      }
+      // No-op: user clicked the same song they already voted for. Don't
+      // round-trip; just acknowledge silently. (We could show "still
+      // voted!" but that risks looking buggy.)
+      if (votedFor === sequenceName) {
+        return;
+      }
     }
     let body;
     try { body = await buildBody({ sequenceName }); }
@@ -238,10 +255,17 @@
     const result = await postJson('/api/vote', body);
     if (result.ok) {
       hasVoted = true;
+      votedFor = sequenceName;
       // Vote-specific success message. showMessage falls back to the
       // generic #requestSuccessful element if #voteSuccessful isn't
       // defined in the active template (backward compat for RF imports).
-      showMessage(MSG_IDS.voteSuccess);
+      // On a successful shift, override the text so users understand
+      // their vote moved rather than "you've already voted."
+      if (result.data && result.data.shifted) {
+        showMessage(MSG_IDS.voteSuccess, undefined, 'Vote changed! 🗳️');
+      } else {
+        showMessage(MSG_IDS.voteSuccess);
+      }
     } else {
       showMessage(mapErrorToId(result.data?.error));
     }
@@ -312,6 +336,13 @@
       });
     }
 
+    // --- Allow-vote-change feature flag (v0.5.6+) ---
+    // Refresh the local copy on every state poll so admin toggling the
+    // setting mid-show propagates without a viewer reload.
+    if (typeof data.allowVoteChange === 'boolean') {
+      allowVoteChange = data.allowVoteChange;
+    }
+
     // --- Reset "already voted" gate when the round id changes ---
     // Round-id check is the backup for voteReset socket events which
     // mobile devices can miss when backgrounded. If the server has
@@ -324,6 +355,7 @@
         // already voted before this client polled).
         hasVoted = false;
         hasTiebreakVoted = false;
+        votedFor = null;
       }
       lastKnownRoundId = data.currentVotingRound;
     }
@@ -331,6 +363,7 @@
     // counts came back empty, the round was reset. Same effect.
     if (data.viewerControlMode === 'VOTING' && data.voteCounts && data.voteCounts.length === 0) {
       hasVoted = false;
+      votedFor = null;
     }
 
     // --- Tiebreak state (v0.24.0+) ---
@@ -683,6 +716,7 @@
       socket.on('voteReset', () => {
         hasVoted = false;
         hasTiebreakVoted = false;
+        votedFor = null;
         // Clear any tiebreak banner that's still on screen — round
         // moved on (either resolution succeeded or timer expired).
         clearTiebreakUI();

@@ -36,6 +36,23 @@
   let tiebreakState = null; // { candidates: [{sequenceName,...}], deadline_ms }
   let tiebreakCountdownTimer = null;
 
+  // Now-playing timer (v0.5.9+).
+  // RF compatibility: implements the {NOW_PLAYING_TIMER} placeholder
+  // (countdown of remaining time in the current sequence). The renderer
+  // emits <span data-showpilot-timer> elements with initial server-computed
+  // text; this code ticks them client-side once a second. State is the
+  // server-anchored start time + duration. When either is missing, the
+  // ticker writes --:--; once remaining hits zero, it writes 0:00 and
+  // stops updating until /api/state reports a new song.
+  //
+  // Lite has no audio engine so there's no clockOffset to reuse — the
+  // timer ticks at second granularity off the client's local Date.now()
+  // and the server's started_at. Sub-second sync isn't visible at m:ss
+  // granularity.
+  let timerStartedAtMs = null;     // ms epoch when the song started (server's clock)
+  let timerDurationSec = null;     // seconds, total length
+  let timerInterval = null;        // setInterval handle
+
   // ======= Error/success message helpers =======
   // RF templates include divs with these IDs; we show the appropriate one.
   // Vote-specific success goes to #voteSuccessful when present (so templates
@@ -112,6 +129,58 @@
     if (msg.includes('already') && (msg.includes('request') || msg.includes('queue'))) return MSG_IDS.alreadyQueued;
     if (msg.includes('queue is full') || msg.includes('full')) return MSG_IDS.queueFull;
     return MSG_IDS.failed;
+  }
+
+  // ======= Now-playing timer ({NOW_PLAYING_TIMER}) =======
+  // Format remaining seconds as m:ss. Negative/NaN → 0:00 (timer expired).
+  // null → --:-- (no song or duration unknown). Matches RF's display.
+  function formatTimerText(remainingSec) {
+    if (remainingSec === null || !isFinite(remainingSec)) return '--:--';
+    const sec = Math.max(0, Math.floor(remainingSec));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  // Update every <span data-showpilot-timer> on the page with the current
+  // remaining-time text. Called from the 1-second interval AND once
+  // immediately on each /api/state poll (in case the song changed and the
+  // tick is up to a second away from firing). Idempotent.
+  function paintTimer() {
+    const els = document.querySelectorAll('[data-showpilot-timer]');
+    if (!els.length) return; // template doesn't include the placeholder; skip
+    let text;
+    if (timerStartedAtMs === null || timerDurationSec === null) {
+      text = '--:--';
+    } else {
+      const elapsedSec = (Date.now() - timerStartedAtMs) / 1000;
+      text = formatTimerText(timerDurationSec - elapsedSec);
+    }
+    els.forEach(el => { if (el.textContent !== text) el.textContent = text; });
+  }
+
+  // Update the anchor values from a /api/state response (or bootstrap).
+  // We accept ISO string + duration in seconds. When the song or its anchor
+  // changes, we replace state and immediately re-paint so the user doesn't
+  // see a stale value for up to a second. The 1-second interval is started
+  // on first call and lives for the page lifetime — cheap and ensures we
+  // don't miss updates if a /api/state poll is delayed.
+  function updateTimerFromState(startedAtIso, durationSeconds) {
+    const newStartMs = startedAtIso ? Date.parse(startedAtIso) : null;
+    const newDurSec = (typeof durationSeconds === 'number' && isFinite(durationSeconds) && durationSeconds > 0)
+      ? durationSeconds : null;
+    if (newStartMs !== timerStartedAtMs || newDurSec !== timerDurationSec) {
+      timerStartedAtMs = newStartMs && isFinite(newStartMs) ? newStartMs : null;
+      timerDurationSec = newDurSec;
+      paintTimer();
+    }
+    if (timerInterval === null && document.querySelector('[data-showpilot-timer]')) {
+      timerInterval = setInterval(paintTimer, 1000);
+    }
+  }
+  // Seed from bootstrap so the timer is correct before the first poll.
+  if (boot.nowPlayingStartedAtIso || boot.nowPlayingDurationSeconds) {
+    updateTimerFromState(boot.nowPlayingStartedAtIso, boot.nowPlayingDurationSeconds);
   }
 
   // ======= GPS =======
@@ -342,6 +411,11 @@
     if (typeof data.allowVoteChange === 'boolean') {
       allowVoteChange = data.allowVoteChange;
     }
+
+    // --- Now-playing timer (v0.5.9+) ---
+    // The server sends started_at + duration on every state poll. Pass
+    // both (even if null — that's how we know to render --:--).
+    updateTimerFromState(data.nowPlayingStartedAtIso || null, data.nowPlayingDurationSeconds || null);
 
     // --- Reset "already voted" gate when the round id changes ---
     // Round-id check is the backup for voteReset socket events which

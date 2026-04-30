@@ -335,6 +335,16 @@
       } else {
         showMessage(MSG_IDS.voteSuccess);
       }
+      // (v0.5.11+) Refresh state immediately so the count cell updates
+      // the moment the server acks the vote, regardless of socket health.
+      // Without this, count updates rely entirely on the voteUpdate
+      // socket event reaching the browser — which is fast on a healthy
+      // connection but unreliable behind some proxies or when socket.io
+      // can't establish (mixed-content, blocked WebSockets, etc.). The
+      // 3-second poll loop catches it eventually but feels broken to a
+      // user clicking and watching a counter that doesn't move. Mirrors
+      // ShowPilotRequest's behavior, which has always done this.
+      refreshState();
     } else {
       showMessage(mapErrorToId(result.data?.error));
     }
@@ -764,6 +774,10 @@
     if (result.ok) {
       hasTiebreakVoted = true;
       showMessage(MSG_IDS.voteSuccess);
+      // (v0.5.11+) Same reasoning as ShowPilotVote — refresh immediately
+      // so the user sees their tiebreak vote register without waiting on
+      // the tiebreakVoteUpdate socket event.
+      refreshState();
     } else {
       showMessage(mapErrorToId(result.data?.error));
     }

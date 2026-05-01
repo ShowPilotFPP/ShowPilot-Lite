@@ -881,6 +881,58 @@
   // this is a code-for-code parity port (non-audio change, ships to
   // both repos per the both-versions-every-time rule).
   // ============================================================
+  // Long-name truncation guard (v0.5.14+)
+  // ============================================================
+  // Some imported third-party templates (e.g. RF Page Builder)
+  // style `.sequence-name` with `white-space: nowrap; overflow: hidden;
+  // text-overflow: ellipsis;`. That assumes one-line song titles. Real
+  // shows have titles like "Walk the Dinosaur (From Ice Age: Dawn of
+  // the Dinosaurs)" which then truncate to "Walk the Din…". The
+  // template author can't anticipate every show's catalog, and asking
+  // every operator to learn CSS to fix it is a non-starter.
+  //
+  // Strategy: inject a defensive rule that allows wrapping AND caps at
+  // 2 lines. We scope it to .sequence-name inside .sequence-item —
+  // that's RF Page Builder territory. Built-in ShowPilot-Lite templates
+  // and canonical RF templates never style .sequence-name (they target
+  // .jukebox-list / .cell-vote-playlist descendants), so this override
+  // is invisible to them.
+  //
+  // We use !important + a 2-class selector so RFPB's existing rules
+  // don't beat us. Mirrors main 0.32.14 verbatim.
+  // ============================================================
+  (function initSequenceNameWrap() {
+    if (document.getElementById('of-seqname-wrap-style')) return; // idempotent
+    const style = document.createElement('style');
+    style.id = 'of-seqname-wrap-style';
+    style.textContent = `
+      .sequence-item .sequence-name {
+        white-space: normal !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        word-break: break-word;
+        min-width: 0;
+      }
+      .sequence-item .sequence-artist {
+        white-space: normal !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 1 !important;
+        line-clamp: 1 !important;
+        -webkit-box-orient: vertical !important;
+        word-break: break-word;
+        min-width: 0;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  })();
+
+  // ============================================================
   (function initPageEffects() {
     const prefersReduced = window.matchMedia &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;

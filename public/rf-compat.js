@@ -68,6 +68,7 @@
     success: 'requestSuccessful',
     voteSuccess: 'voteSuccessful',
     invalidLocation: 'invalidLocation',
+    invalidLocationCode: 'invalidLocationCode',
     failed: 'requestFailed',
     alreadyQueued: 'requestPlaying',
     queueFull: 'queueFull',
@@ -126,8 +127,10 @@
     }, durationMs || 3000);
   }
 
-  function mapErrorToId(error) {
+  function mapErrorToId(error, data) {
+    if (data && data.invalidLocationCode) return MSG_IDS.invalidLocationCode;
     const msg = (error || '').toLowerCase();
+    if (msg.includes('access code')) return MSG_IDS.invalidLocationCode;
     if (msg.includes('location')) return MSG_IDS.invalidLocation;
     if (msg.includes('already voted')) return MSG_IDS.alreadyVoted;
     if (msg.includes('already') && (msg.includes('request') || msg.includes('queue'))) return MSG_IDS.alreadyQueued;
@@ -274,6 +277,10 @@
         throw e;
       }
     }
+    if (boot.requiresLocationCode) {
+      const codeEl = document.getElementById('locationCodeInput');
+      body.locationCode = codeEl ? codeEl.value.trim() : '';
+    }
     return body;
   }
 
@@ -350,7 +357,7 @@
       // ShowPilotRequest's behavior, which has always done this.
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error));
+      showMessage(mapErrorToId(result.data?.error, result.data));
     }
   };
 
@@ -364,7 +371,7 @@
       showMessage(MSG_IDS.success);
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error));
+      showMessage(mapErrorToId(result.data?.error, result.data));
     }
   };
 
@@ -424,6 +431,11 @@
     // setting mid-show propagates without a viewer reload.
     if (typeof data.allowVoteChange === 'boolean') {
       allowVoteChange = data.allowVoteChange;
+    }
+
+    // --- Location code flag (v0.5.26+) ---
+    if (typeof data.requiresLocationCode === 'boolean') {
+      boot.requiresLocationCode = data.requiresLocationCode;
     }
 
     // --- Show name → document title (v0.5.17+) ---
@@ -861,7 +873,7 @@
       // the tiebreakVoteUpdate socket event.
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error));
+      showMessage(mapErrorToId(result.data?.error, result.data));
     }
   };
 

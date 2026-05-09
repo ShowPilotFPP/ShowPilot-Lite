@@ -79,7 +79,7 @@ ShowPilot-Lite/                      (FPP plugin dir: /home/fpp/media/plugins/Sh
 Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 
 **FPP host**
-- Will's prod FPP: `192.168.1.247`
+- Will's prod FPP: `<fpp-host-ip>`
 - FPP version: 10.x-master
 - Plugin dir: `/home/fpp/media/plugins/ShowPilot-Lite/`
 - Data dir: `/home/fpp/media/plugindata/ShowPilot-Lite/` (FPP backups capture this)
@@ -116,7 +116,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-Or — and this is the preferred path — drop the tarball into ShipPilot at `lightsondrake.org/push` and let it commit, tag, and push.
+Or — and this is the preferred path — drop the tarball into ShipPilot at `<show-domain>/push` and let it commit, tag, and push.
 
 To package a tarball:
 
@@ -190,7 +190,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ## Architectural decisions worth knowing
 
-**Publisher identity for all ShowPilot systems is "ShowPilot Project."** Not Will's name, not lightsondrake. Used in `pluginInfo.json` `author` field, and going forward should be the publisher across all four repos (ShowPilot, ShowPilot-Lite, ShowPilot-plugin, ShipPilot) when a publisher rename pass happens. That broader rename hasn't happened yet — Lite v0.2.0 was the first place it landed.
+**Publisher identity for all ShowPilot systems is "ShowPilot Project."** Not the operator's personal identity. Used in `pluginInfo.json` `author` field, and going forward should be the publisher across all four repos (ShowPilot, ShowPilot-Lite, ShowPilot-plugin, ShipPilot) when a publisher rename pass happens. That broader rename hasn't happened yet — Lite v0.2.0 was the first place it landed.
 
 **The data directory is a symlink, not a config setting.** Everything inside Lite's source tree references `./data/` as a relative path (especially `cover-art.js` which uses `path.join(__dirname, '..', 'data', 'covers')`). Rather than make all those callsites configurable, `fpp_install.sh` symlinks `./data/` to `/home/fpp/media/plugindata/ShowPilot-Lite/`. This keeps the application code unchanged from main while putting actual data where FPP's backup feature captures it. Don't try to "clean this up" by adding a `dataDir` config — it'll require touching every callsite that joins to `data/`.
 
@@ -210,7 +210,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.32, May 2026)
+## Recent state (as of v0.5.33, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -234,6 +234,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.30 | (mirrors main 0.33.146) Baseline next-song tracking — correct "Up Next" display during voted/jukeboxed interruptions. `baseline_next_sequence_name` added to `now_playing`; `getNextUp` tier 3. |
 | 0.5.31 | (mirrors main 0.33.147) Stale un-handed jukebox queue entry expiry — `popNextQueuedRequest` skips entries older than 2 hours; `cleanupStaleRequests(120)` runs every 60s. |
 | 0.5.32 | (mirrors main 0.33.148) Descriptive helper text on jukebox and voting setting checkboxes. Also: PRIMER.md added to repo. |
+| 0.5.33 | (mirrors main 0.33.149) Emit `nextScheduled` socket event immediately after a successful jukebox request so "Up Next" updates instantly for connected viewers. (`routes/viewer.js` jukebox/add handler.) |
 
 ---
 
@@ -256,7 +257,7 @@ For tone and reference, not work tasks:
 
 - Lite's target user is "the regular person who's probably already using PulseMesh." That phrase came from Will and is the design north star. Decisions in favor of simplicity for that user beat decisions in favor of theoretical flexibility.
 - Lite is meant to be installable in five clicks: open Plugin Manager → paste URL or find in list → Install → Restart FPPD → click Lite entry in nav. Every ergonomics decision should be checked against that flow.
-- Will runs his actual Christmas show ("Lights On Drake") on the *full* ShowPilot at lightsondrake.org, not Lite. Lite exists for other show operators. Will's own show needs the audio streaming Lite removes.
+- Will runs his actual Christmas show ("the show") on the *full* ShowPilot at <show-domain>, not Lite. Lite exists for other show operators. Will's own show needs the audio streaming Lite removes.
 
 ---
 

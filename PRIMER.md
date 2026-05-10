@@ -213,7 +213,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.34, May 2026)
+## Recent state (as of v0.5.36, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -238,7 +238,8 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.31 | (mirrors main 0.33.147) Stale un-handed jukebox queue entry expiry — `popNextQueuedRequest` skips entries older than 2 hours; `cleanupStaleRequests(120)` runs every 60s. |
 | 0.5.32 | (mirrors main 0.33.148) Descriptive helper text on jukebox and voting setting checkboxes. Also: PRIMER.md added to repo. |
 | 0.5.33 | (mirrors main 0.33.149) Emit `nextScheduled` socket event immediately after a successful jukebox request so "Up Next" updates instantly for connected viewers. (`routes/viewer.js` jukebox/add handler.) |
-| 0.5.34 | Viewer QR code generator on the Dashboard. `GET /api/admin/qr-code` returns a server-generated PNG of the viewer URL (`qrcode ^1.5.4`). Lite uses a new `viewer_url` config column (DB migration auto-runs) since `public_base_url` was removed with audio. Set the URL in Settings → General. New dependency — run `npm install` (or re-run `fpp_install.sh`) after pulling. |
+| 0.5.35 | Viewer QR code generator on the Dashboard. `GET /api/admin/qr-code` returns a server-generated PNG of the viewer URL (`qrcode ^1.5.4`). Lite uses a new `viewer_url` config column (DB migration auto-runs) since `public_base_url` was removed with audio. Set the URL in Settings → General. New dependency — run `npm install` (or re-run `fpp_install.sh`) after pulling. |
+| 0.5.36 | (mirrors main 0.33.152) FPP playlist cooldown suppression. `/api/plugin/state` now includes `playlistPatches`; plugin v0.13.40 applies them. |
 
 ---
 

@@ -215,10 +215,11 @@ router.put('/config', requireAdmin, (req, res) => {
     // Location code (v0.5.26+)
     'location_code_enabled',
     'location_code',
-    // Viewer URL for QR code generation (v0.5.34+)
+    // Viewer URL for QR code generation (v0.5.35+)
     'viewer_url',
     // Misc
     'hide_sequence_after_played',
+    'cooldown_suppress_fpp_playlist',
     'blocked_ips',
     // Viewer player decoration (now-playing bar styling)
     'player_decoration',

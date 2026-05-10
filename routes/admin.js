@@ -8,6 +8,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
+const QRCode = require('qrcode');
 const router = express.Router();
 const config = require('../lib/config-loader');
 const { db, getConfig, updateConfig,
@@ -214,6 +215,8 @@ router.put('/config', requireAdmin, (req, res) => {
     // Location code (v0.5.26+)
     'location_code_enabled',
     'location_code',
+    // Viewer URL for QR code generation (v0.5.34+)
+    'viewer_url',
     // Misc
     'hide_sequence_after_played',
     'blocked_ips',
@@ -1526,6 +1529,34 @@ router.get('/geocode', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[geocode] error:', err.message);
     res.status(500).json({ error: 'geocode failed: ' + err.message });
+  }
+});
+
+// ============================================================
+// QR code generator
+// Returns a PNG of the viewer URL as a QR code. Uses viewer_url
+// (Lite-specific config column) since public_base_url was removed
+// along with audio streaming. No client-side library needed.
+// ============================================================
+router.get('/qr-code', requireAdmin, async (req, res) => {
+  const cfg = getConfig();
+  const url = (cfg.viewer_url || '').trim();
+  if (!url) {
+    return res.status(400).json({ error: 'viewer_url not configured' });
+  }
+  try {
+    const png = await QRCode.toBuffer(url, {
+      type: 'png',
+      width: 300,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.send(png);
+  } catch (err) {
+    console.error('[qr-code] generation failed:', err.message);
+    res.status(500).json({ error: 'QR generation failed' });
   }
 });
 

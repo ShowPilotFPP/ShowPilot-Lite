@@ -17,6 +17,7 @@ What Lite adds beyond removal:
 - A clean `/api/now-playing` endpoint replacing the audio-laden `/api/now-playing-audio`
 - A small new `initNowPlayingBar` IIFE in `public/rf-compat.js` that auto-shows the bar when a sequence plays and auto-hides when not — no user interaction required (replaces the launcher-tap UX)
 - FPP plugin packaging: `pluginInfo.json`, `menu.inc`, `scripts/fpp_install.sh`, `scripts/fpp_uninstall.sh`
+- `viewer_url` config column — simple URL field for the viewer page address, used to generate the dashboard QR code (replaces `public_base_url` which was audio-only in main)
 
 The app boundary is otherwise identical to main. Same DB schema (minus stripped columns). Same backup format. Same admin auth. Same plugin sync protocol (the FPP-side ShowPilot-plugin can talk to either). Same Express route structure.
 
@@ -130,6 +131,8 @@ tar --exclude='showpilot-lite/node_modules' \
 
 The tarball MUST contain `.release.json` at the root with `repo: "showpilot-lite"` for ShipPilot to route it. The repo is registered in ShipPilot's DB with `managed=1` (ShipPilot generated its SSH key, key is on GitHub as a deploy key with write access).
 
+**Important:** `.release.json` is in `.gitignore` and is NOT committed to the repo. A fresh `git clone` won't have one. Claude must create it with `create_file` each session before packaging the tarball.
+
 Sanity-check before packaging:
 ```bash
 cd /home/claude/showpilot-lite && for f in server.js routes/*.js lib/*.js public/*.js; do node --check "$f" 2>&1 | head -3; done; echo OK
@@ -210,7 +213,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.33, May 2026)
+## Recent state (as of v0.5.34, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -235,6 +238,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.31 | (mirrors main 0.33.147) Stale un-handed jukebox queue entry expiry — `popNextQueuedRequest` skips entries older than 2 hours; `cleanupStaleRequests(120)` runs every 60s. |
 | 0.5.32 | (mirrors main 0.33.148) Descriptive helper text on jukebox and voting setting checkboxes. Also: PRIMER.md added to repo. |
 | 0.5.33 | (mirrors main 0.33.149) Emit `nextScheduled` socket event immediately after a successful jukebox request so "Up Next" updates instantly for connected viewers. (`routes/viewer.js` jukebox/add handler.) |
+| 0.5.34 | Viewer QR code generator on the Dashboard. `GET /api/admin/qr-code` returns a server-generated PNG of the viewer URL (`qrcode ^1.5.4`). Lite uses a new `viewer_url` config column (DB migration auto-runs) since `public_base_url` was removed with audio. Set the URL in Settings → General. New dependency — run `npm install` (or re-run `fpp_install.sh`) after pulling. |
 
 ---
 

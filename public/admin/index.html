@@ -1758,7 +1758,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.33</span>
+        <span class="app-version">v0.5.34</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -1895,6 +1895,32 @@
             <thead><tr><th>Sequence</th><th style="width: 80px;">Plays</th></tr></thead>
             <tbody id="topBody"><tr><td colspan="2" class="muted">Loading…</td></tr></tbody>
           </table>
+        </div>
+
+        <!-- QR code card — shows viewer URL as a scannable code for display at the show.
+             Hidden until loadQrCard() confirms viewer_url is configured. -->
+        <div class="card" id="qrCard" style="display:none;">
+          <div class="row" style="justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div style="flex: 1; min-width: 0;">
+              <h2 style="margin: 0 0 0.25rem;">Viewer QR Code</h2>
+              <p class="muted" style="font-size: 0.85rem; margin: 0 0 0.5rem;">Print or display this so visitors can scan and open your viewer page.</p>
+              <div id="qrViewerUrl" class="muted" style="font-size: 0.8rem; word-break: break-all; margin-bottom: 0.75rem;"></div>
+              <div class="row" style="gap: 0.5rem; margin: 0;">
+                <button class="secondary" onclick="copyViewerUrl()" id="qrCopyBtn">📋 Copy URL</button>
+                <button class="secondary" onclick="downloadQr()">⬇ Download PNG</button>
+              </div>
+            </div>
+            <!-- QR image generated server-side; white bg so it scans correctly in dark theme -->
+            <img id="qrImg" src="" alt="Viewer QR code"
+                 style="border-radius: 6px; background: #fff; padding: 10px; flex-shrink: 0; width: 180px; height: 180px;" />
+          </div>
+        </div>
+        <!-- Prompt shown when viewer_url isn't set yet -->
+        <div class="card" id="qrNoUrlCard" style="display:none;">
+          <h2>Viewer QR Code</h2>
+          <p class="muted" style="font-size: 0.85rem;">
+            Set your <strong>Viewer page URL</strong> in Settings → General to enable the QR code generator.
+          </p>
         </div>
 
       </div>
@@ -2506,6 +2532,16 @@
                      onchange="saveSetting('show_name', this.value)" />
               <p class="muted" style="font-size: 0.8rem; margin-top: 0.25rem;">
                 Used as the browser tab title on the viewer page (unless your template defines its own &lt;title&gt; tag) and as a friendly name in a few other places.
+              </p>
+            </div>
+            <div style="margin-top: 1.25rem;">
+              <label for="cfg_viewer_url">Viewer page URL</label>
+              <input type="text" id="cfg_viewer_url"
+                     placeholder="http://192.168.1.x:3100 or https://yourdomain.com"
+                     onchange="saveSetting('viewer_url', this.value.trim())" />
+              <p class="muted" style="font-size: 0.8rem; margin-top: 0.25rem;">
+                The URL visitors open to access your viewer page. Used to generate a QR code on the Dashboard.
+                Use your LAN IP for local shows, or your public domain if using a Cloudflare Tunnel.
               </p>
             </div>
           </div>
@@ -4145,6 +4181,70 @@
       updatePlayerCustomColorVisibility();
       updateAllowVoteChangeVisibility();
       updateLocationMap();
+      setVal('cfg_viewer_url', c.viewer_url || '');
+      // QR card — update whenever config is reloaded in case viewer_url changed
+      loadQrCard(c.viewer_url || '');
+    }
+
+    // ----------------------------------------------------------------
+    // QR code card (dashboard)
+    // The QR image is generated server-side via GET /api/admin/qr-code
+    // using viewer_url (Lite-specific; public_base_url was removed with audio).
+    // Card is hidden until viewer_url is configured; a prompt card shows instead.
+    // ----------------------------------------------------------------
+    let _qrCurrentUrl = '';
+
+    async function loadQrCard(viewerUrl) {
+      const card      = document.getElementById('qrCard');
+      const noUrlCard = document.getElementById('qrNoUrlCard');
+      if (!card || !noUrlCard) return;
+
+      const url = (viewerUrl || '').trim();
+      if (!url) {
+        card.style.display      = 'none';
+        noUrlCard.style.display = 'block';
+        return;
+      }
+
+      noUrlCard.style.display = 'none';
+      card.style.display      = 'block';
+      _qrCurrentUrl = url;
+
+      document.getElementById('qrViewerUrl').textContent = url;
+
+      // Only re-fetch when the URL actually changes
+      const img = document.getElementById('qrImg');
+      if (img.dataset.url !== url) {
+        img.dataset.url = url;
+        img.src = '/api/admin/qr-code?cb=' + encodeURIComponent(url);
+      }
+    }
+
+    async function copyViewerUrl() {
+      if (!_qrCurrentUrl) return;
+      try {
+        await navigator.clipboard.writeText(_qrCurrentUrl);
+        const btn = document.getElementById('qrCopyBtn');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      } catch (e) {
+        prompt('Copy this URL:', _qrCurrentUrl);
+      }
+    }
+
+    function downloadQr() {
+      if (!_qrCurrentUrl) return;
+      fetch('/api/admin/qr-code?cb=' + encodeURIComponent(_qrCurrentUrl))
+        .then(r => r.blob())
+        .then(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'viewer-qr.png';
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        })
+        .catch(() => alert('Download failed. Try right-clicking the QR image and saving it.'));
     }
 
     function updateViewerRequestLimitVisibility() {

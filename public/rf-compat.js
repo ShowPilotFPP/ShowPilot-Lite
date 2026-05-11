@@ -645,6 +645,40 @@
     document.querySelectorAll('[data-showpilot-container="afterhours"]').forEach(el => {
       setVisible(el, data.viewerControlMode === 'OFF');
     });
+    document.querySelectorAll('[data-showpilot-container="race"]').forEach(el => {
+      setVisible(el, data.viewerControlMode === 'RACE');
+    });
+    if (data.viewerControlMode === 'RACE') {
+      document.querySelectorAll('[data-showpilot-container="jukebox"], [data-showpilot-container="voting"]').forEach(el => {
+        setVisible(el, false);
+      });
+    }
+    if (data.race) {
+      applyRaceTapUpdate({
+        counts: data.race.tapCounts || [],
+        bars: buildRaceBars(data.race.tapCounts || []),
+        leadingSequence: data.race.tapCounts?.[0]?.sequence_name || null,
+      });
+      if (data.race.winner) {
+        if (data.race.winner !== _lastShownRaceWinner) {
+          _lastShownRaceWinner = data.race.winner;
+          const winSeq = (data.sequences || []).find(s => s.name === data.race.winner);
+          showRaceWinner({
+            sequenceName: data.race.winner,
+            displayName: winSeq ? winSeq.display_name : data.race.winner,
+            artist: winSeq ? (winSeq.artist || '') : '',
+            tapCount: data.race.tapCounts?.[0]?.count || null,
+          });
+        } else {
+          document.querySelectorAll('.race-tap-btn').forEach(b => { b.disabled = true; });
+        }
+        if (_raceTimerInterval) { clearInterval(_raceTimerInterval); _raceTimerInterval = null; }
+        const countdownEl = document.getElementById('showpilot-race-countdown');
+        if (countdownEl) countdownEl.textContent = 'Race over — next song coming up!';
+      } else {
+        updateRaceTimer(data.race.endsAt);
+      }
+    }
   }
 
   function escapeHtml(s) {
@@ -1055,6 +1089,21 @@
       // voted" gate. Socket.io fires 'connect' both on initial connect
       // and on each reconnect, so this covers both.
       socket.on('connect', () => refreshState());
+
+      // ---- Race mode socket events (v0.33.155+) ----
+      socket.on('raceStarted', (data) => {
+        initRaceUI(data);
+        refreshState();
+      });
+      socket.on('raceTapUpdate', (data) => {
+        applyRaceTapUpdate(data);
+      });
+      socket.on('raceWinner', (data) => {
+        showRaceWinner(data);
+      });
+      socket.on('raceEnded', () => {
+        refreshState();
+      });
     }
   } catch {}
 

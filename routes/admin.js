@@ -215,6 +215,11 @@ router.put('/config', requireAdmin, (req, res) => {
     // Location code (v0.5.26+)
     'location_code_enabled',
     'location_code',
+    // Race mode (v0.33.155+)
+    'race_duration_seconds',
+    'race_end_on_sequence_end',
+    'race_target_taps',
+    'race_interrupt_winner',
     // Viewer URL for QR code generation (v0.5.35+)
     'viewer_url',
     // Misc
@@ -270,6 +275,42 @@ router.put('/config', requireAdmin, (req, res) => {
   if ('viewer_control_mode' in updates) {
     const io = req.app.get('io');
     if (io) io.emit('viewerModeChanged', { mode: updates.viewer_control_mode });
+
+    // Race mode lifecycle: auto-start race when switching TO race mode;
+    // clear the timer when switching away.
+    const { startRace, clearRaceTimer } = require('./viewer');
+    if (updates.viewer_control_mode === 'RACE') {
+      const freshCfg = getConfig();
+      const endsAt = startRace(freshCfg);
+      if (io) io.emit('raceStarted', { endsAt });
+      // Schedule timer-based resolution if a duration is configured
+      if (endsAt) {
+        const ms = new Date(endsAt).getTime() - Date.now();
+        if (ms > 0) {
+          const viewerModule = require('./viewer');
+          const { getRaceLeader } = require('../lib/db');
+          // Store handle in viewer module so clearRaceTimer() can cancel it
+          viewerModule._raceTimerHandle = setTimeout(() => {
+            viewerModule._raceTimerHandle = null;
+            const latestCfg = getConfig();
+            if (latestCfg.race_active && !latestCfg.race_winner) {
+              const leader = getRaceLeader();
+              if (leader) {
+                const seq = db.prepare(`SELECT display_name, artist FROM sequences WHERE name = ? LIMIT 1`).get(leader.sequence_name);
+                viewerModule.resolveRace(io, leader.sequence_name, seq?.display_name || leader.sequence_name, seq?.artist || '', leader.count);
+              } else {
+                db.prepare(`UPDATE config SET race_active = 0 WHERE id = 1`).run();
+                if (io) io.emit('raceEnded', { noWinner: true });
+              }
+            }
+          }, Math.max(ms, 0));
+        }
+      }
+    } else {
+      clearRaceTimer();
+      // Clear race runtime state when leaving race mode
+      db.prepare(`UPDATE config SET race_active = 0, race_winner = NULL, race_started_at = NULL, race_ends_at = NULL WHERE id = 1`).run();
+    }
   }
 
   res.json({ ok: true });
@@ -607,6 +648,42 @@ router.post('/reset-votes', requireAdmin, (req, res) => {
   db.prepare(`DELETE FROM votes WHERE round_id = ?`).run(cfg.current_voting_round);
   res.json({ ok: true });
 });
+
+// Reset and restart the current race (admin manually re-fires the race)
+router.post('/race/reset', requireAdmin, (req, res) => {
+  const cfg = getConfig();
+  const { startRace } = require('./viewer');
+  const io = req.app.get('io');
+  const endsAt = startRace(cfg);
+  if (io) {
+    io.emit('raceStarted', { endsAt });
+    io.emit('raceTapUpdate', { counts: [], bars: {}, leadingSequence: null });
+  }
+  // Schedule new timer
+  if (endsAt) {
+    const ms = new Date(endsAt).getTime() - Date.now();
+    if (ms > 0) {
+      const viewerModule = require('./viewer');
+      const { getRaceLeader } = require('../lib/db');
+      viewerModule._raceTimerHandle = setTimeout(() => {
+        viewerModule._raceTimerHandle = null;
+        const latestCfg = getConfig();
+        if (latestCfg.race_active && !latestCfg.race_winner) {
+          const leader = getRaceLeader();
+          if (leader) {
+            const seq = db.prepare(`SELECT display_name, artist FROM sequences WHERE name = ? LIMIT 1`).get(leader.sequence_name);
+            viewerModule.resolveRace(io, leader.sequence_name, seq?.display_name || leader.sequence_name, seq?.artist || '', leader.count);
+          } else {
+            db.prepare(`UPDATE config SET race_active = 0 WHERE id = 1`).run();
+            if (io) io.emit('raceEnded', { noWinner: true });
+          }
+        }
+      }, Math.max(ms, 0));
+    }
+  }
+  res.json({ ok: true, endsAt });
+});
+
 
 // Purge jukebox queue
 router.post('/purge-queue', requireAdmin, (req, res) => {

@@ -1758,7 +1758,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.36</span>
+        <span class="app-version">v0.5.37</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -1882,9 +1882,11 @@
               <option value="OFF">Off</option>
               <option value="VOTING">Voting</option>
               <option value="JUKEBOX">Jukebox</option>
+              <option value="RACE">Race</option>
             </select>
             <button class="secondary" onclick="resetVotes()">Reset Votes</button>
             <button class="secondary" onclick="purgeQueue()">Purge Queue</button>
+            <button class="secondary" id="raceResetBtn" onclick="resetRace()" style="display:none">Reset Race</button>
           </div>
         </div>
 
@@ -2517,6 +2519,7 @@
             <div class="sub-tab active" data-subtab="general" onclick="switchTab('general')">General</div>
             <div class="sub-tab" data-subtab="jukebox" onclick="switchTab('jukebox')">Jukebox</div>
             <div class="sub-tab" data-subtab="voting" onclick="switchTab('voting')">Voting</div>
+            <div class="sub-tab" data-subtab="race" onclick="switchTab('race')">Race</div>
             <div class="sub-tab" data-subtab="app" onclick="switchTab('app')">App</div>
             <div class="sub-tab" data-subtab="safeguards" onclick="switchTab('safeguards')">Interaction Safeguards</div>
             <div class="sub-tab" data-subtab="public-access" onclick="switchTab('public-access')">Public Access</div>
@@ -2644,6 +2647,49 @@
               <span class="muted" style="font-size: 0.8rem;">— typical: 30–90s</span>
             </div>
           </div>
+
+          <!-- RACE SETTINGS -->
+          <div class="sub-tab-pane" data-subtab="race">
+            <p class="muted" style="font-size: 0.85rem; margin: 0 0 1rem;">
+              In Race mode, viewers tap their favourite song as many times as they want. The song with the most taps when the race ends plays next. Select <strong>Race</strong> in the Mode dropdown on the Dashboard tab to start a race.
+            </p>
+
+            <h3>Race duration</h3>
+            <div class="row" style="align-items: center; gap: 10px;">
+              <input type="checkbox" id="cfg_race_end_on_sequence_end"
+                     onchange="saveSetting('race_end_on_sequence_end', this.checked ? 1 : 0); updateRaceDurationVisibility();" />
+              <label for="cfg_race_end_on_sequence_end" style="margin: 0;">End race when the current song ends (ignore timer)</label>
+            </div>
+            <div class="row" id="race_duration_row" style="align-items: center; gap: 10px; margin-top: 0.5rem;">
+              <label for="cfg_race_duration_seconds" style="margin: 0;">Race timer (seconds):</label>
+              <input type="number" id="cfg_race_duration_seconds" min="10" max="600" step="5"
+                     onchange="saveSetting('race_duration_seconds', parseInt(this.value, 10) || 60)"
+                     style="max-width: 120px;" />
+              <span class="muted" style="font-size: 0.8rem;">— default 60s, max 600s</span>
+            </div>
+
+            <h3 style="margin-top: 1rem;">Win condition</h3>
+            <div class="row" style="align-items: center; gap: 10px;">
+              <label for="cfg_race_target_taps" style="margin: 0;">First to reach this many taps wins immediately:</label>
+              <input type="number" id="cfg_race_target_taps" min="0" max="9999" step="1"
+                     onchange="saveSetting('race_target_taps', parseInt(this.value, 10) || 0)"
+                     style="max-width: 100px;" />
+            </div>
+            <p class="muted" style="font-size: 0.8rem; margin: 0.25rem 0 0 0;">
+              Set to <strong>0</strong> to disable — the race will always run until the timer (or song end). Set to any number to let the first song to hit that tap count win immediately.
+            </p>
+
+            <h3 style="margin-top: 1rem;">Winner playback</h3>
+            <div class="row">
+              <input type="checkbox" id="cfg_race_interrupt_winner"
+                     onchange="saveSetting('race_interrupt_winner', this.checked ? 1 : 0)" />
+              <label for="cfg_race_interrupt_winner" style="margin: 0;">Interrupt current song and play winner immediately</label>
+            </div>
+            <p class="muted" style="font-size: 0.8rem; margin: 0.2rem 0 0 1.75rem;">
+              When off (default), the winner plays after the current song finishes — same behaviour as Voting mode.
+            </p>
+          </div>
+
 
           <!-- AUDIO -->
           <!-- All audio-related settings live here. Previously these were
@@ -4149,6 +4195,12 @@
       setChk('cfg_reset_votes_after_round', c.reset_votes_after_round);
       setChk('cfg_tiebreak_enabled', c.tiebreak_enabled);
       setVal('cfg_tiebreak_duration_sec', c.tiebreak_duration_sec || 60);
+      // Race settings (v0.33.155+ / v0.5.37+)
+      setChk('cfg_race_end_on_sequence_end', c.race_end_on_sequence_end);
+      setVal('cfg_race_duration_seconds', c.race_duration_seconds || 60);
+      setVal('cfg_race_target_taps', c.race_target_taps || 0);
+      setChk('cfg_race_interrupt_winner', c.race_interrupt_winner);
+      updateRaceDurationVisibility();
       setChk('cfg_play_psa_enabled', c.play_psa_enabled);
       setVal('cfg_psa_frequency', c.psa_frequency);
       // Trigger mode (v0.4.0+): drives which help block + label text shows.
@@ -7006,6 +7058,9 @@
           badge.textContent = 'ON · ' + mode;
           setVcToggle(btn, true);
         }
+        // Show Reset Race button only in RACE mode
+        const raceResetBtn = document.getElementById('raceResetBtn');
+        if (raceResetBtn) raceResetBtn.style.display = mode === 'RACE' ? '' : 'none';
         updateModePill(mode);
       };
     }

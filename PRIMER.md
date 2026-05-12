@@ -213,7 +213,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.36, May 2026)
+## Recent state (as of v0.5.38, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -240,6 +240,8 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.33 | (mirrors main 0.33.149) Emit `nextScheduled` socket event immediately after a successful jukebox request so "Up Next" updates instantly for connected viewers. (`routes/viewer.js` jukebox/add handler.) |
 | 0.5.35 | Viewer QR code generator on the Dashboard. `GET /api/admin/qr-code` returns a server-generated PNG of the viewer URL (`qrcode ^1.5.4`). Lite uses a new `viewer_url` config column (DB migration auto-runs) since `public_base_url` was removed with audio. Set the URL in Settings → General. New dependency — run `npm install` (or re-run `fpp_install.sh`) after pulling. |
 | 0.5.36 | (mirrors main 0.33.152) FPP playlist cooldown suppression. `/api/plugin/state` now includes `playlistPatches`; plugin v0.13.40 applies them. |
+| 0.5.37 | (mirrors main 0.33.155/0.33.156) Race mode — tap-to-win competitive viewer mode. Same race DB columns, `race_taps` table, admin UI settings card, progress bar, and winner animation as main. Audio-specific pieces absent (no audio stream, no clock-sync). `viewer_control_mode = 'RACE'` recognized in `getNextUp()` and plugin state handler. |
+| 0.5.38 | (mirrors main 0.33.157) Race mode FPP scheduler command. `POST /api/plugin/viewer-mode` now accepts `RACE`, allowing FPP scheduler events to trigger race mode. Race mode pill added to admin header (amber/gold). Plugin v0.13.64. |
 
 ---
 

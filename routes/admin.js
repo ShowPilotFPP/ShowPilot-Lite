@@ -220,6 +220,9 @@ router.put('/config', requireAdmin, (req, res) => {
     'race_end_on_sequence_end',
     'race_target_taps',
     'race_interrupt_winner',
+    'race_instructions_text',
+    'race_font_size',
+    'race_use_template_css',
     // Viewer URL for QR code generation (v0.5.35+)
     'viewer_url',
     // Misc

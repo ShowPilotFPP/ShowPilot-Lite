@@ -144,6 +144,14 @@ fi
 # ---------------------------------------------------------------
 # 4. npm install (compiles better-sqlite3 against host Node)
 # ---------------------------------------------------------------
+# If npm was previously run as root (e.g. during an earlier FPP plugin
+# install attempt), it leaves root-owned files in /home/fpp/.npm which
+# cause EACCES when npm later runs as the fpp user. Fix ownership before
+# running so a clean install always succeeds.
+if [ -d "/home/fpp/.npm" ]; then
+    echo "[install] Fixing npm cache ownership (root-owned files cause EACCES)..."
+    sudo chown -R fpp:fpp /home/fpp/.npm
+fi
 echo "[install] Running npm install --omit=dev (this may take a minute)..."
 cd "$PLUGIN_DIR"
 sudo -u fpp npm install --omit=dev --no-audit --no-fund

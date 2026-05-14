@@ -213,7 +213,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.38, May 2026)
+## Recent state (as of v0.5.43, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -242,6 +242,8 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.36 | (mirrors main 0.33.152) FPP playlist cooldown suppression. `/api/plugin/state` now includes `playlistPatches`; plugin v0.13.40 applies them. |
 | 0.5.37 | (mirrors main 0.33.155/0.33.156) Race mode — tap-to-win competitive viewer mode. Same race DB columns, `race_taps` table, admin UI settings card, progress bar, and winner animation as main. Audio-specific pieces absent (no audio stream, no clock-sync). `viewer_control_mode = 'RACE'` recognized in `getNextUp()` and plugin state handler. |
 | 0.5.38 | (mirrors main 0.33.157) Race mode FPP scheduler command. `POST /api/plugin/viewer-mode` now accepts `RACE`, allowing FPP scheduler events to trigger race mode. Race mode pill added to admin header (amber/gold). Plugin v0.13.64. |
+| 0.5.39 – 0.5.42 | Various releases not enumerated here — see git log. |
+| 0.5.43 | Fix fresh-install failure when npm cache is root-owned. `fpp_install.sh` now runs `chown -R fpp:fpp /home/fpp/.npm` before `npm install` if the cache dir exists, preventing the `EACCES` error that occurred when npm had previously been invoked as root. |
 
 ---
 

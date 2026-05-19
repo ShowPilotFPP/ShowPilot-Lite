@@ -13,7 +13,13 @@ const { cleanupStaleViewers } = require('./lib/db');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: true, credentials: true } });
+const io = new Server(server, {
+  // credentials:false — viewers connect from the same origin; cross-origin
+  // callers use Bearer tokens, not cookies. credentials:true with origin:true
+  // would allow any website to make authenticated socket connections on behalf
+  // of a logged-in admin.
+  cors: { origin: true, credentials: false },
+});
 
 // Trust proxy: configurable so direct-exposure deployments aren't
 // vulnerable to X-Forwarded-For spoofing while reverse-proxy deployments
@@ -48,12 +54,14 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// CORS — allow the FPP plugin UI (on its own origin) to call our API
+// CORS — allow the FPP plugin UI (on its own origin) to call our API.
+// Plugin authenticates via Authorization: Bearer <showToken>, not cookies,
+// so credentials:true is not needed and would be a security risk.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
+    // credentials header intentionally omitted — plugin uses Bearer tokens
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   }

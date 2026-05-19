@@ -1,6 +1,6 @@
 # ShowPilot-Lite Project Primer
 
-This document gives you (Claude, in a future conversation) the context you need to help Will work on ShowPilot-Lite effectively. Read this first before any other project files.
+This document gives you (Claude, in a future conversation) the context you need to help the operator work on ShowPilot-Lite effectively. Read this first before any other project files.
 
 ---
 
@@ -17,7 +17,6 @@ What Lite adds beyond removal:
 - A clean `/api/now-playing` endpoint replacing the audio-laden `/api/now-playing-audio`
 - A small new `initNowPlayingBar` IIFE in `public/rf-compat.js` that auto-shows the bar when a sequence plays and auto-hides when not — no user interaction required (replaces the launcher-tap UX)
 - FPP plugin packaging: `pluginInfo.json`, `menu.inc`, `scripts/fpp_install.sh`, `scripts/fpp_uninstall.sh`
-- `viewer_url` config column — simple URL field for the viewer page address, used to generate the dashboard QR code (replaces `public_base_url` which was audio-only in main)
 
 The app boundary is otherwise identical to main. Same DB schema (minus stripped columns). Same backup format. Same admin auth. Same plugin sync protocol (the FPP-side ShowPilot-plugin can talk to either). Same Express route structure.
 
@@ -27,7 +26,7 @@ The app boundary is otherwise identical to main. Same DB schema (minus stripped 
 
 This was discussed at length and the call was: separate repo, audio code physically not present.
 
-The reasoning Will gave: FPP runs from an SD card, and the *possibility* of audio code accidentally writing to disk during a show — even if guarded by a runtime flag — is a stability risk he wasn't willing to accept. Physical removal eliminates the failure mode entirely. The maintenance cost of two codebases was accepted as the price.
+The reasoning the operator gave: FPP runs from an SD card, and the *possibility* of audio code accidentally writing to disk during a show — even if guarded by a runtime flag — is a stability risk he wasn't willing to accept. Physical removal eliminates the failure mode entirely. The maintenance cost of two codebases was accepted as the price.
 
 Don't propose collapsing the fork via a feature flag. That conversation already happened and the fork is the answer.
 
@@ -80,7 +79,7 @@ ShowPilot-Lite/                      (FPP plugin dir: /home/fpp/media/plugins/Sh
 Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 
 **FPP host**
-- Will's prod FPP: `<fpp-host-ip>`
+- the operator's prod FPP: `<FPP-HOST-IP>`
 - FPP version: 10.x-master
 - Plugin dir: `/home/fpp/media/plugins/ShowPilot-Lite/`
 - Data dir: `/home/fpp/media/plugindata/ShowPilot-Lite/` (FPP backups capture this)
@@ -92,12 +91,12 @@ Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 
 **The data symlink** is important and easy to misunderstand. The plugin's `./data/` is a symlink to `/home/fpp/media/plugindata/ShowPilot-Lite/`. This lets the application's hardcoded relative path (`path.join(__dirname, '..', 'data', ...)` in `cover-art.js`) work unchanged while putting actual files under FPP's plugindata where FPP's backup feature finds them. Reinstalling the plugin re-clones the source dir but the symlink target survives.
 
-**There is no separate test environment.** Lite is small enough that Will tests on his prod FPP. Risky changes can be smoke-tested by running `node server.js` from a clone on his Windows dev box first.
+**There is no separate test environment.** Lite is small enough that the operator tests on his prod FPP. Risky changes can be smoke-tested by running `node server.js` from a clone on his Windows dev box first.
 
 ### CI/CD
 - GitHub: `github.com/ShowPilotFPP/ShowPilot-Lite`
 - No GitHub Actions. Releases are manual via tarball drop into ShipPilot.
-- Releases push to GitHub, but the FPP host doesn't auto-update. Will manually `git pull` and re-runs `fpp_install.sh` when there's a fix that requires it (e.g. systemd unit changes). Plain code changes only need `git pull` + `systemctl restart showpilot-lite`.
+- Releases push to GitHub, but the FPP host doesn't auto-update. the operator manually `git pull` and re-runs `fpp_install.sh` when there's a fix that requires it (e.g. systemd unit changes). Plain code changes only need `git pull` + `systemctl restart showpilot-lite`.
 
 ---
 
@@ -106,7 +105,7 @@ Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 Same as main but with a different exclude prefix and different release target.
 
 ```powershell
-# Will's dev machine (Windows, PowerShell)
+# the operator's dev machine (Windows, PowerShell)
 cd C:\dev\ShowPilot-Lite
 git pull origin main
 tar -xzf "$env:USERPROFILE\Downloads\showpilot-lite-vX.Y.Z.tar.gz" --strip-components=1
@@ -117,7 +116,7 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-Or — and this is the preferred path — drop the tarball into ShipPilot at `<show-domain>/push` and let it commit, tag, and push.
+Or — and this is the preferred path — drop the tarball into ShipPilot at `<SHOW-DOMAIN>/push` and let it commit, tag, and push.
 
 To package a tarball:
 
@@ -130,8 +129,6 @@ tar --exclude='showpilot-lite/node_modules' \
 ```
 
 The tarball MUST contain `.release.json` at the root with `repo: "showpilot-lite"` for ShipPilot to route it. The repo is registered in ShipPilot's DB with `managed=1` (ShipPilot generated its SSH key, key is on GitHub as a deploy key with write access).
-
-**Important:** `.release.json` is in `.gitignore` and is NOT committed to the repo. A fresh `git clone` won't have one. Claude must create it with `create_file` each session before packaging the tarball.
 
 Sanity-check before packaging:
 ```bash
@@ -158,25 +155,25 @@ Bump the version in BOTH places before packaging:
 - `package.json` — `"version": "X.Y.Z"`
 - `public/admin/index.html` — `<span class="app-version">vX.Y.Z</span>` near the top
 
-If `fpp_install.sh` or the systemd unit changed, `git pull` alone won't apply the change — Will has to re-run the install script on FPP. Note this in the commit message so he knows.
+If `fpp_install.sh` or the systemd unit changed, `git pull` alone won't apply the change — the operator has to re-run the install script on FPP. Note this in the commit message so he knows.
 
 ---
 
 ## "Both versions every time" — the maintenance contract
 
-This was Will's explicit call after pushing back on a feature-flag approach. The contract:
+This was the operator's explicit call after pushing back on a feature-flag approach. The contract:
 
 - **Non-audio change** (most things — voting, viewer UI, backup, queue, themes, plugin sync non-audio bits): land in BOTH `ShowPilot` and `ShowPilot-Lite`. Same version number across both when in sync. Two tarballs from the same edits.
 - **Audio-touching change**: main only. Lite skips the release.
 - **Lite-only change** (FPP plugin packaging, install scripts, FPP-API integration): Lite only.
 
-When Will describes a change, classify it explicitly: "this touches audio code" vs "this is voting logic." If the answer isn't obvious, ask. Don't silently assume one repo.
+When the operator describes a change, classify it explicitly: "this touches audio code" vs "this is voting logic." If the answer isn't obvious, ask. Don't silently assume one repo.
 
 When the version numbers diverge across the two repos, that's the visible signal that they're out of sync. Aligned versions mean aligned features. Drift is noise.
 
 ---
 
-## Working style — what Will expects
+## Working style — what the operator expects
 
 Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
@@ -186,14 +183,14 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 - **Test what you can.** Regex, date math, anything testable in isolation gets a quick `/tmp/test.js` before claiming the fix works.
 - **One feature per version bump.** Each tarball is a coherent change. Three unrelated things means three releases.
 - **Comments explain WHY, not WHAT.** The code already says what.
-- **Will doesn't write code himself.** Give him scripts he can paste. Bake version bumps into your edits.
-- **Check version availability before tagging.** Tags can already exist from prior releases not visible in your context. If you propose a version and Will says "that version exists," just bump and re-cut without further questions.
+- **the operator doesn't write code himself.** Give him scripts he can paste. Bake version bumps into your edits.
+- **Check version availability before tagging.** Tags can already exist from prior releases not visible in your context. If you propose a version and the operator says "that version exists," just bump and re-cut without further questions.
 
 ---
 
 ## Architectural decisions worth knowing
 
-**Publisher identity for all ShowPilot systems is "ShowPilot Project."** Not the operator's personal identity. Used in `pluginInfo.json` `author` field, and going forward should be the publisher across all four repos (ShowPilot, ShowPilot-Lite, ShowPilot-plugin, ShipPilot) when a publisher rename pass happens. That broader rename hasn't happened yet — Lite v0.2.0 was the first place it landed.
+**Publisher identity for all ShowPilot systems is "ShowPilot Project."** Not the operator's name, not <show-slug>. Used in `pluginInfo.json` `author` field, and going forward should be the publisher across all four repos (ShowPilot, ShowPilot-Lite, ShowPilot-plugin, ShipPilot) when a publisher rename pass happens. That broader rename hasn't happened yet — Lite v0.2.0 was the first place it landed.
 
 **The data directory is a symlink, not a config setting.** Everything inside Lite's source tree references `./data/` as a relative path (especially `cover-art.js` which uses `path.join(__dirname, '..', 'data', 'covers')`). Rather than make all those callsites configurable, `fpp_install.sh` symlinks `./data/` to `/home/fpp/media/plugindata/ShowPilot-Lite/`. This keeps the application code unchanged from main while putting actual data where FPP's backup feature captures it. Don't try to "clean this up" by adding a `dataDir` config — it'll require touching every callsite that joins to `data/`.
 
@@ -213,7 +210,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.43, May 2026)
+## Recent state (as of v0.5.44, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -233,17 +230,8 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.13 | (mirrors main 0.32.13) RF Page Builder template compatibility — dual-class playlist output, queue-as-divs, `{NOW_PLAYING_IMAGE}` placeholder. |
 | 0.5.14 – 0.5.18 | Mirrors main 0.32.14 through 0.33.8 (non-audio changes only). Specific contents not enumerated here — see the corresponding ShowPilot main rows or git log. The in-app updater (main v0.33.0) is intentionally NOT mirrored to Lite; FPP's plugin manager is Lite's update path. |
 | 0.5.19 | (mirrors main 0.33.9) RF default-template drop-in compatibility. Adds `{playlist-standard-dynamic-container}` substitution as an alias for `{jukebox-dynamic-container}` so RF's `lumos-light-show` and `on-air` defaults render correctly out of the box. Also strips `{VOTES}` (purely a doc-comment artifact in RF's templates). Verified against all six RF community templates. |
-| 0.5.20 – 0.5.29 | Mirrors main 0.33.10 through 0.33.145 (non-audio changes only). Specific contents not enumerated here — see corresponding ShowPilot main rows or git log. |
-| 0.5.30 | (mirrors main 0.33.146) Baseline next-song tracking — correct "Up Next" display during voted/jukeboxed interruptions. `baseline_next_sequence_name` added to `now_playing`; `getNextUp` tier 3. |
-| 0.5.31 | (mirrors main 0.33.147) Stale un-handed jukebox queue entry expiry — `popNextQueuedRequest` skips entries older than 2 hours; `cleanupStaleRequests(120)` runs every 60s. |
-| 0.5.32 | (mirrors main 0.33.148) Descriptive helper text on jukebox and voting setting checkboxes. Also: PRIMER.md added to repo. |
-| 0.5.33 | (mirrors main 0.33.149) Emit `nextScheduled` socket event immediately after a successful jukebox request so "Up Next" updates instantly for connected viewers. (`routes/viewer.js` jukebox/add handler.) |
-| 0.5.35 | Viewer QR code generator on the Dashboard. `GET /api/admin/qr-code` returns a server-generated PNG of the viewer URL (`qrcode ^1.5.4`). Lite uses a new `viewer_url` config column (DB migration auto-runs) since `public_base_url` was removed with audio. Set the URL in Settings → General. New dependency — run `npm install` (or re-run `fpp_install.sh`) after pulling. |
-| 0.5.36 | (mirrors main 0.33.152) FPP playlist cooldown suppression. `/api/plugin/state` now includes `playlistPatches`; plugin v0.13.40 applies them. |
-| 0.5.37 | (mirrors main 0.33.155/0.33.156) Race mode — tap-to-win competitive viewer mode. Same race DB columns, `race_taps` table, admin UI settings card, progress bar, and winner animation as main. Audio-specific pieces absent (no audio stream, no clock-sync). `viewer_control_mode = 'RACE'` recognized in `getNextUp()` and plugin state handler. |
-| 0.5.38 | (mirrors main 0.33.157) Race mode FPP scheduler command. `POST /api/plugin/viewer-mode` now accepts `RACE`, allowing FPP scheduler events to trigger race mode. Race mode pill added to admin header (amber/gold). Plugin v0.13.64. |
-| 0.5.39 – 0.5.42 | Various releases not enumerated here — see git log. |
-| 0.5.43 | Fix fresh-install failure when npm cache is root-owned. `fpp_install.sh` now runs `chown -R fpp:fpp /home/fpp/.npm` before `npm install` if the cache dir exists, preventing the `EACCES` error that occurred when npm had previously been invoked as root. |
+| 0.5.20 – 0.5.43 | Multiple feature/fix releases not enumerated here. Search git log or past chat history for specific provenance. |
+| 0.5.44 | Security: remove CORS `credentials:true` wildcard from Socket.io init and HTTP middleware (mirrors main v0.33.175). Fix `getClientIp()` to use `req.ip` instead of reading `x-forwarded-for` directly, preventing IP block list bypass on direct-exposure installs. Audio mimeType allowlist not applicable to Lite (no audio upload routes). |
 
 ---
 
@@ -252,9 +240,9 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 - **Submit to FalconChristmas/fpp-pluginList.** Once stable, get Lite into the FPP plugin master list so users can find it without pasting the URL. The PR is a one-line addition: `[ "ShowPilot-Lite", "https://raw.githubusercontent.com/ShowPilotFPP/ShowPilot-Lite/main/pluginInfo.json" ]`.
 - **Publisher rename across other repos.** "ShowPilot Project" only landed in Lite v0.2.0. ShowPilot main, ShipPilot, and ShowPilot-plugin still reference older identities (commit author config, package.json author, README). A coordinated sweep is pending.
 - **The systemd `Restart=on-failure` fix needs to land in main.** Same bug exists in main's v0.28.2 — backup-restore exits cleanly, supervisor was set up with `on-failure`. When a non-audio change goes to main, fold this fix in.
-- **Auto-deploy on push.** ShipPilot pushes to GitHub but doesn't pull-and-restart on FPP. After a Lite release, Will manually pulls and (if needed) re-runs `fpp_install.sh`. Could be solved by an FPP-AutoUpdate-style separate project; out of scope for now.
+- **Auto-deploy on push.** ShipPilot pushes to GitHub but doesn't pull-and-restart on FPP. After a Lite release, the operator manually pulls and (if needed) re-runs `fpp_install.sh`. Could be solved by an FPP-AutoUpdate-style separate project; out of scope for now.
 - **Existing v0.2.0 installs don't pick up systemd unit changes via `git pull` alone.** `fpp_install.sh` only writes the unit at install time. For unit-touching releases, document the re-run in the commit message.
-- **HTTPS.** Lite runs HTTP only. If Will ever wants HTTPS, terminate at a reverse proxy (NPM, Caddy) on the FPP host or another box. Cookies would need the Secure flag at that point.
+- **HTTPS.** Lite runs HTTP only. If the operator ever wants HTTPS, terminate at a reverse proxy (NPM, Caddy) on the FPP host or another box. Cookies would need the Secure flag at that point.
 - **No rate limit on login.** Inherited from main; no Lite-specific worsening, but worth noting if Lite ever gets exposed beyond LAN.
 - **First-boot detection inherited as-is.** `lib/backup.isFirstBoot()` returns true iff there's exactly one user named `admin` with `must_change_password=1`. Drives the "Restore from backup" picker on the login page.
 
@@ -264,24 +252,24 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 
 For tone and reference, not work tasks:
 
-- Lite's target user is "the regular person who's probably already using PulseMesh." That phrase came from Will and is the design north star. Decisions in favor of simplicity for that user beat decisions in favor of theoretical flexibility.
+- Lite's target user is "the regular person who's probably already using PulseMesh." That phrase came from the operator and is the design north star. Decisions in favor of simplicity for that user beat decisions in favor of theoretical flexibility.
 - Lite is meant to be installable in five clicks: open Plugin Manager → paste URL or find in list → Install → Restart FPPD → click Lite entry in nav. Every ergonomics decision should be checked against that flow.
-- Will runs his actual Christmas show ("the show") on the *full* ShowPilot at <show-domain>, not Lite. Lite exists for other show operators. Will's own show needs the audio streaming Lite removes.
+- the operator runs his actual Christmas show ("<SHOW-NAME>") on the *full* ShowPilot at <SHOW-DOMAIN>, not Lite. Lite exists for other show operators. the operator's own show needs the audio streaming Lite removes.
 
 ---
 
 ## Starting a new conversation in this project
 
-When Will starts a new conversation about ShowPilot-Lite, you have:
-- This primer (it ships with the repo at `PRIMER.md`)
-- Possibly past conversation history if Will moved chats into the project
+When the operator starts a new conversation about ShowPilot-Lite, you have:
+- This primer (you're reading it)
+- Possibly past conversation history if the operator moved chats into the project
 
 What you should do:
 
-1. **Read this primer.** Ask Will what he wants to work on.
+1. **Read this primer.** Ask the operator what he wants to work on.
 2. **Don't assume the workspace has the latest code.** Each conversation gets a fresh container. If you need to edit code, `git clone https://github.com/ShowPilotFPP/ShowPilot-Lite.git /home/claude/showpilot-lite` first.
 3. **Check the version in `package.json`** to confirm what release you're starting from.
 4. **For changes that aren't Lite-specific**, ask whether the same change needs to go to ShowPilot main too. The "both versions every time" rule means non-audio changes ship to both repos.
-5. **Before tagging a release, ask Will to confirm the version number is available** if there's any chance prior tags exist that aren't visible in context.
+5. **Before tagging a release, ask the operator to confirm the version number is available** if there's any chance prior tags exist that aren't visible in context.
 
-Don't reinvent decisions documented above. If you think a documented decision is wrong, raise it explicitly with Will rather than quietly changing course.
+Don't reinvent decisions documented above. If you think a documented decision is wrong, raise it explicitly with the operator rather than quietly changing course.

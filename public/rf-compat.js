@@ -1570,6 +1570,46 @@
   // The decoration system from the full ShowPilot is preserved:
   // seasonal themes (christmas, halloween, etc.) style the bar.
   // ============================================================
+  // ---- Player bar / UI translation table ----
+  const _PLAYER_STRINGS = {
+    es: {
+      "Show isn't playing right now": 'El espectáculo no está en marcha ahora',
+      'Winner!': '¡Ganador!',
+      'Language:': 'Idioma:',
+    },
+    fr: {
+      "Show isn't playing right now": 'Le spectacle n’est pas en cours maintenant',
+      'Winner!': 'Gagnant !',
+      'Language:': 'Langue :',
+    },
+    de: {
+      "Show isn't playing right now": 'Die Show läuft gerade nicht',
+      'Winner!': 'Gewinner!',
+      'Language:': 'Sprache:',
+    },
+    pt: {
+      "Show isn't playing right now": 'O show não está tocando agora',
+      'Winner!': 'Vencedor!',
+      'Language:': 'Idioma:',
+    },
+    it: {
+      "Show isn't playing right now": 'Lo show non è in corso adesso',
+      'Winner!': 'Vincitore!',
+      'Language:': 'Lingua:',
+    },
+    pl: {
+      "Show isn't playing right now": 'Pokóz nie jest teraz odtwarzany',
+      'Winner!': 'Zwycięzca!',
+      'Language:': 'Język:',
+    },
+  };
+  function _pt(str) {
+    const preferred = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+    const lang = preferred.split('-')[0].toLowerCase();
+    const table = _PLAYER_STRINGS[lang];
+    return (table && table[str]) || str;
+  }
+
   (function initNowPlayingBar() {
     const boot = window.__SHOWPILOT__ || {};
 

@@ -781,7 +781,7 @@
      * ============================================================ */
     main {
       padding: 1.5rem 1.25rem 3rem;
-      max-width: 1280px;
+      max-width: 1600px;
       margin: 0 auto;
     }
     .tab-pane { display: none; }
@@ -1759,7 +1759,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.44</span>
+        <span class="app-version">v0.5.45</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -1910,12 +1910,12 @@
               <div id="qrViewerUrl" class="muted" style="font-size: 0.8rem; word-break: break-all; margin-bottom: 0.75rem;"></div>
               <div class="row" style="gap: 0.5rem; margin: 0;">
                 <button class="secondary" onclick="copyViewerUrl()" id="qrCopyBtn">📋 Copy URL</button>
-                <button class="secondary" onclick="downloadQr()">⬇ Download PNG</button>
+                <button class="secondary" onclick="downloadQr()">⬇ Download SVG</button>
               </div>
             </div>
-            <!-- QR image generated server-side; white bg so it scans correctly in dark theme -->
-            <img id="qrImg" src="" alt="Viewer QR code"
-                 style="border-radius: 6px; background: #fff; padding: 10px; flex-shrink: 0; width: 180px; height: 180px;" />
+            <!-- QR code rendered as SVG so it scales perfectly at any size -->
+            <object id="qrImg" data="" type="image/svg+xml" aria-label="Viewer QR code"
+                 style="border-radius: 6px; background: #fff; padding: 10px; flex-shrink: 0; width: 180px; height: 180px; display: block;"></object>
           </div>
         </div>
         <!-- Prompt shown when viewer_url isn't set yet -->
@@ -2158,6 +2158,14 @@
            TAB: VIEWER PAGE (Monaco editor + template list)
            ============================================================ -->
       <div class="tab-pane" data-pane="viewer">
+        <div class="card" style="padding-bottom: 0; margin-bottom: 0;">
+          <div class="sub-tabs">
+            <div class="sub-tab active" data-subtab="viewer-editor" onclick="switchTab('viewer-editor')">Template Editor</div>
+            <div class="sub-tab" data-subtab="viewer-translation" onclick="switchTab('viewer-translation')">Translation</div>
+          </div>
+        </div>
+
+        <div class="sub-tab-pane active" data-subtab="viewer-editor">
         <div class="card">
           <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
             <h2 style="margin: 0;">Viewer Page</h2>
@@ -2321,9 +2329,9 @@
         </div>
 
         <div class="card">
-          <h2>Now-Playing Bar Decoration</h2>
+          <h2>Listen-on-Phone Player Decoration</h2>
           <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0.75rem;">
-            Decorate the now-playing bar on the viewer page with seasonal flair.
+            Decorate the audio player on the viewer page with seasonal flair.
             Independent of admin theme — your viewers see what you pick here.
           </p>
           <div class="row">
@@ -2497,17 +2505,168 @@
         </div>
 
         <div class="card">
-          <h2>Now-Playing Bar Visibility</h2>
+          <h2>Listen-on-Phone Launcher Button</h2>
           <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0.75rem;">
-            The now-playing bar appears at the bottom of the viewer page when a sequence is playing,
-            showing cover art, title, and artist. Disable to hide it entirely — useful for a pure
-            voting/jukebox UI with no song display.
+            The floating button viewers tap to open the audio player. Pick a built-in icon, upload your own, and choose how it looks.
+            Changes take effect on viewer page reload.
           </p>
+
           <div class="row">
-            <input type="checkbox" id="cfg_viewer_show_player_bar" onchange="saveSetting('viewer_show_player_bar', this.checked ? 1 : 0)" />
-            <label for="cfg_viewer_show_player_bar" style="margin: 0;">Show now-playing bar to viewers</label>
+            <div style="flex: 1;">
+              <label for="cfg_launcher_icon_source">Icon</label>
+              <select id="cfg_launcher_icon_source" onchange="saveSetting('launcher_icon_source', this.value); updateLauncherUI();">
+                <option value="default">🎧 Default (headphones emoji)</option>
+                <option value="preset:headphones">🎧 Headphones</option>
+                <option value="preset:tree">🎄 Christmas tree</option>
+                <option value="preset:pumpkin">🎃 Pumpkin</option>
+                <option value="preset:ghost">👻 Ghost</option>
+                <option value="preset:snowflake">❄️ Snowflake</option>
+                <option value="preset:music">🎶 Music notes</option>
+                <option value="preset:heart">💝 Heart</option>
+                <option value="preset:shamrock">☘️ Shamrock</option>
+                <option value="preset:star">⭐ Star</option>
+                <option value="custom">🖼️ Custom image…</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Custom image picker — only visible when source = 'custom' -->
+          <div class="row" id="cfg_launcher_custom_row" style="display:none;">
+            <div style="flex: 1;">
+              <label for="launcherIconFile">Upload icon (PNG, JPG, SVG, or WebP — under 250KB)</label>
+              <input type="file" id="launcherIconFile" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+              <div id="launcherIconPreviewWrap" style="margin-top: 0.6rem;">
+                <span class="muted" style="font-size: 0.8rem;">No custom icon uploaded yet.</span>
+              </div>
+              <button class="secondary" type="button" id="launcherIconClearBtn"
+                      style="margin-top: 0.5rem; display:none;"
+                      onclick="clearLauncherIcon();">
+                Clear custom icon
+              </button>
+              <p class="muted" style="font-size: 0.78rem; margin: 0.4rem 0 0;">
+                Square images work best. Transparent PNGs are recommended when the round button background is hidden (below).
+              </p>
+            </div>
+          </div>
+
+          <div class="row">
+            <input type="checkbox" id="cfg_launcher_show_chrome" onchange="saveSetting('launcher_show_chrome', this.checked ? 1 : 0); updateLauncherPreview();" />
+            <label for="cfg_launcher_show_chrome" style="margin: 0;">Show round button background</label>
+          </div>
+          <p class="muted" style="font-size: 0.78rem; margin: 0.25rem 0 0.75rem;">
+            On: classic red circular button with the icon inside. Off: bare icon — your image becomes the button. Use a clearly-clickable image when off.
+          </p>
+
+          <div class="row">
+            <div style="flex: 1; max-width: 280px;">
+              <label for="cfg_launcher_size">Size</label>
+              <select id="cfg_launcher_size" onchange="saveSetting('launcher_size', this.value); updateLauncherPreview();">
+                <option value="small">Small (40 px)</option>
+                <option value="medium">Medium (52 px) — default</option>
+                <option value="large">Large (72 px)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Live preview -->
+          <div style="margin-top: 0.9rem;">
+            <div class="muted" style="font-size: 0.78rem; margin-bottom: 0.4rem;">Preview (how viewers will see it):</div>
+            <div style="background: linear-gradient(135deg, #1a1a2e, #2a1a3e);
+                        border-radius: 8px; border: 1px solid var(--border);
+                        padding: 1.25rem; display: flex; align-items: center; justify-content: center;
+                        min-height: 110px;">
+              <div id="launcherPreviewBtn" style="
+                  width: 52px; height: 52px; border-radius: 50%;
+                  background: rgba(220,38,38,0.95); color: white;
+                  border: 2px solid rgba(255,255,255,0.4);
+                  font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                  display: flex; align-items: center; justify-content: center;
+                  padding: 0; line-height: 1; overflow: hidden;
+                  ">🎧</div>
+            </div>
           </div>
         </div>
+        </div>
+
+        <div class="sub-tab-pane" data-subtab="viewer-translation">
+            <div class="card">
+              <h2>Viewer Page Translation</h2>
+              <p class="muted" style="font-size:0.9rem; margin:0 0 1rem;">
+                When enabled, ShowPilot automatically translates the viewer page into each visitor's
+                browser language. Translation runs once per language per template version and is
+                cached — the first visitor pays a small delay, everyone after is instant.
+                Song names and artist names are never translated.
+              </p>
+              <div class="row" style="align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                <input type="checkbox" id="cfg_translation_enabled"
+                       onchange="saveSetting('translation_enabled', this.checked ? 1 : 0); toggleTranslationSettings(this.checked)" />
+                <label for="cfg_translation_enabled" style="margin:0;">Enable automatic translation</label>
+              </div>
+              <div id="translationSettingsPanel" style="display:none;">
+                <div style="margin-bottom:1rem;">
+                  <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">Translation backend</label>
+                  <select id="cfg_translation_backend" onchange="saveSetting('translation_backend', this.value); updateTranslationBackendUI()"
+                          style="padding:0.4rem 0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); font-size:0.9rem;">
+                    <option value="mymemory">MyMemory (free, no setup required)</option>
+                    <option value="libretranslate">LibreTranslate (self-hosted)</option>
+                    <option value="deepl">DeepL (higher quality, free tier)</option>
+                  </select>
+                </div>
+                <div id="libreTranslateSettings">
+                  <div style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">LibreTranslate API URL</label>
+                    <input type="text" id="cfg_translation_api_url"
+                           placeholder="https://libretranslate.com"
+                           onchange="saveSetting('translation_api_url', this.value)"
+                           style="width:100%; max-width:420px; padding:0.4rem 0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); font-size:0.9rem;" />
+                    <p class="muted" style="font-size:0.8rem; margin:0.35rem 0 0;">
+                      For self-hosted LibreTranslate. See
+                      <a href="https://github.com/LibreTranslate/LibreTranslate" target="_blank" rel="noopener">LibreTranslate on GitHub</a>
+                      for setup instructions.
+                    </p>
+                  </div>
+                  <div style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">API key <span class="muted" style="font-weight:400;">(optional — only needed if your instance requires one)</span></label>
+                    <input type="password" id="cfg_translation_api_key_libre"
+                           placeholder="Leave blank if not required"
+                           onchange="saveSetting('translation_api_key', this.value)"
+                           style="width:100%; max-width:420px; padding:0.4rem 0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); font-size:0.9rem;" />
+                  </div>
+                </div>
+                <div id="deeplSettings" style="display:none;">
+                  <div style="margin-bottom:1rem;">
+                    <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:0.35rem;">DeepL API key</label>
+                    <input type="password" id="cfg_translation_api_key_deepl"
+                           placeholder="DeepL free API key"
+                           onchange="saveSetting('translation_api_key', this.value)"
+                           style="width:100%; max-width:420px; padding:0.4rem 0.5rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); font-size:0.9rem;" />
+                    <p class="muted" style="font-size:0.8rem; margin:0.35rem 0 0;">
+                      Free tier: 500,000 characters/month.
+                      Get a key at <a href="https://www.deepl.com/pro#developer" target="_blank" rel="noopener">deepl.com</a>.
+                    </p>
+                  </div>
+                </div>
+                <div style="margin-bottom:1rem;">
+                  <button class="secondary" onclick="testTranslation()">🧪 Test translation</button>
+                  <span id="translationTestStatus" style="font-size:0.85rem; margin-left:0.75rem;"></span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                <h2 style="margin:0;">Translation Cache</h2>
+                <button class="danger" onclick="clearTranslationCache()">Clear All</button>
+              </div>
+              <p class="muted" style="font-size:0.85rem; margin:0 0 1rem;">
+                Cached translations are stored per template version. Editing a template automatically
+                invalidates its cached translations — they'll be rebuilt on the next visitor request.
+              </p>
+              <div id="translationCacheList" style="font-size:0.85rem;">
+                <span class="muted">Loading…</span>
+              </div>
+            </div>
+          </div>
+
       </div>
 
       <!-- ============================================================
@@ -3165,6 +3324,48 @@
        Auto-runs a search on open using the current display name as the
        initial query. User can edit + re-search. Clicking a result writes
        the title, artist, AND cover to the sequence atomically. -->
+  <!-- Language Variant Modal (v0.33.162+) -->
+  <div id="langVariantModal" style="display:none; position:fixed; inset:0; z-index:9000;
+       background:rgba(0,0,0,0.65); align-items:center; justify-content:center;">
+    <div style="background:var(--bg-elevated); border:1px solid var(--border);
+                border-radius:8px; padding:1.5rem; max-width:480px; width:calc(100% - 2rem);
+                max-height:90vh; overflow-y:auto; color:var(--text);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+        <h3 id="langVariantModalTitle" style="margin:0; font-size:1rem; color:var(--text);">Language Variants</h3>
+        <button onclick="closeLanguageModal()" style="background:transparent; border:0;
+                color:var(--text-muted); cursor:pointer; font-size:1.2rem; line-height:1;
+                padding:4px;">✕</button>
+      </div>
+      <p style="font-size:0.83rem; color:var(--text-muted); margin:0 0 0.75rem;">
+        Upload alternate-language audio files for this sequence. Viewers with the player open
+        will see a language toggle when variants are available. Each file must be the
+        <strong>same duration</strong> as the default track for sync to work correctly.
+      </p>
+      <input type="hidden" id="langVariantSeqName" />
+      <div id="langVariantList" style="margin-bottom:1rem; min-height:2rem;"></div>
+      <hr style="border-color:var(--border); margin:0.75rem 0;" />
+      <div style="font-size:0.85rem; font-weight:600; margin-bottom:0.5rem; color:var(--text);">Upload new variant</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:0.5rem;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label style="font-size:0.78rem; color:var(--text-muted);">Language code</label>
+          <input id="langVariantCode" type="text" placeholder="es" maxlength="10"
+                 style="width:60px; padding:0.35rem 0.5rem; font-size:0.9rem;
+                        background:var(--bg-input); border:1px solid var(--border);
+                        border-radius:4px; color:var(--text);" />
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:180px;">
+          <label style="font-size:0.78rem; color:var(--text-muted);">Audio file (MP3, M4A, etc.)</label>
+          <input id="langVariantFile" type="file" accept="audio/*"
+                 style="font-size:0.82rem; color:var(--text);" />
+        </div>
+        <button onclick="uploadLanguageVariant()"
+                style="padding:0.4rem 0.9rem; font-size:0.85rem; white-space:nowrap;">Upload</button>
+      </div>
+      <div id="langVariantStatus" style="font-size:0.82rem; min-height:1.2rem;"></div>
+    </div>
+  </div>
+
+
   <div id="trackSearchModal" class="of-modal hidden">
     <div class="of-modal-card" style="max-width: 720px; width: calc(100% - 2rem);">
       <h3 style="margin-top: 0;">Search for track</h3>
@@ -3615,6 +3816,256 @@
         pre.scrollTop = pre.scrollHeight;
       } catch (err) {
         pre.textContent = '(network error: ' + err.message + ')';
+      }
+    }
+
+    // ============================================================
+    // Language variant management (v0.33.162+)
+    // ============================================================
+    // Admin can upload alternate-language audio files for any sequence
+    // that has a primary track in the cache. Uploaded via raw body POST
+    // (same pattern as the plugin upload endpoint).
+
+    // Show the language variant modal for a sequence.
+    async function openLanguageModal(sequenceName, displayName) {
+      const modal = document.getElementById('langVariantModal');
+      const modalTitle = document.getElementById('langVariantModalTitle');
+      const langList = document.getElementById('langVariantList');
+      const langSeqInput = document.getElementById('langVariantSeqName');
+
+      if (!modal) return;
+      modalTitle.textContent = 'Language Variants — ' + (displayName || sequenceName);
+      langSeqInput.value = sequenceName;
+      langList.innerHTML = '<span class="muted">Loading…</span>';
+      modal.style.display = 'flex';
+
+      await refreshLanguageVariantList(sequenceName);
+    }
+
+    function closeLanguageModal() {
+      const modal = document.getElementById('langVariantModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function refreshLanguageVariantList(sequenceName) {
+      const langList = document.getElementById('langVariantList');
+      try {
+        const res = await fetch('/api/admin/audio-cache/languages/' + encodeURIComponent(sequenceName), { credentials: 'include' });
+        const data = await res.json();
+        const langs = (data.languages || []).filter(l => l !== 'default');
+        langList.innerHTML = '';
+        if (langs.length === 0) {
+          const empty = document.createElement('span');
+          empty.className = 'muted';
+          empty.style.fontSize = '0.85rem';
+          empty.textContent = 'No language variants uploaded yet.';
+          langList.appendChild(empty);
+        } else {
+          langs.forEach(lang => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid var(--border);';
+            const label = document.createElement('span');
+            label.style.cssText = 'font-size:0.85rem; font-weight:600; text-transform:uppercase; min-width:32px;';
+            label.textContent = lang;
+            const btn = document.createElement('button');
+            btn.className = 'danger';
+            btn.style.cssText = 'padding:2px 8px; font-size:0.8rem;';
+            btn.textContent = 'Remove';
+            btn.addEventListener('click', () => deleteLanguageVariant(sequenceName, lang));
+            row.appendChild(label);
+            row.appendChild(btn);
+            langList.appendChild(row);
+          });
+        }
+      } catch (e) {
+        langList.innerHTML = '<span class="muted">Error: ' + escapeHtml(e.message) + '</span>';
+      }
+    }
+
+    async function uploadLanguageVariant() {
+      const seqName = document.getElementById('langVariantSeqName').value;
+      const langCode = (document.getElementById('langVariantCode').value || '').toLowerCase().trim();
+      const fileInput = document.getElementById('langVariantFile');
+      const statusEl = document.getElementById('langVariantStatus');
+
+      if (!langCode || !/^[a-z]{2,10}$/.test(langCode)) {
+        statusEl.textContent = 'Language code must be 2-10 lowercase letters (e.g. es, fr, de)';
+        statusEl.style.color = 'var(--status-danger)';
+        return;
+      }
+      if (!fileInput.files || !fileInput.files[0]) {
+        statusEl.textContent = 'Select an audio file first.';
+        statusEl.style.color = 'var(--status-danger)';
+        return;
+      }
+
+      statusEl.textContent = 'Computing hash…';
+      statusEl.style.color = '';
+
+      const file = fileInput.files[0];
+      const buf = await file.arrayBuffer();
+      // SHA-256 in browser
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+
+      statusEl.textContent = 'Uploading…';
+      try {
+        const res = await fetch(
+          '/api/admin/audio-cache/languages/' + encodeURIComponent(seqName) +
+          '?lang=' + encodeURIComponent(langCode) +
+          '&hash=' + encodeURIComponent(hash) +
+          '&mimeType=' + encodeURIComponent(file.type || 'audio/mpeg'),
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': file.type || 'audio/mpeg' },
+            body: buf,
+          }
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          statusEl.textContent = 'Upload failed: ' + (data.error || res.status);
+          statusEl.style.color = 'var(--status-danger)';
+          return;
+        }
+        statusEl.textContent = 'Uploaded ' + langCode.toUpperCase() + ' variant (' + formatBytes(data.sizeBytes || 0) + ')';
+        statusEl.style.color = 'var(--status-ok, green)';
+        fileInput.value = '';
+        document.getElementById('langVariantCode').value = '';
+        await refreshLanguageVariantList(seqName);
+      } catch (e) {
+        statusEl.textContent = 'Upload error: ' + e.message;
+        statusEl.style.color = 'var(--status-danger)';
+      }
+    }
+
+    async function deleteLanguageVariant(sequenceName, lang) {
+      const ok = await showConfirm('Remove ' + lang.toUpperCase() + ' variant?', 'Viewers will hear the default track for this language.');
+      if (!ok) return;
+      try {
+        const res = await fetch(
+          '/api/admin/audio-cache/languages/' + encodeURIComponent(sequenceName) + '/' + encodeURIComponent(lang),
+          { method: 'DELETE', credentials: 'include' }
+        );
+        if (!res.ok) { await showAlert('Delete failed (' + res.status + ')'); return; }
+        await refreshLanguageVariantList(sequenceName);
+      } catch (e) {
+        await showAlert('Delete error: ' + e.message);
+      }
+    }
+
+    // ============================================================
+    // Translation (v0.33.175+)
+    // ============================================================
+
+    // Called when the viewer-translation sub-tab is opened, and also on
+    // initial page load if translation was previously enabled. Loads the
+    // current translation settings into the form fields.
+    async function loadTranslationSettings() {
+      try {
+        const res = await fetch('/api/admin/config', { credentials: 'include' });
+        const c = await res.json();
+        setChk('cfg_translation_enabled', c.translation_enabled);
+        toggleTranslationSettings(c.translation_enabled === 1);
+        const backend = c.translation_backend || 'mymemory';
+        setVal('cfg_translation_backend', backend);
+        updateTranslationBackendUI();
+        setVal('cfg_translation_api_url', c.translation_api_url || 'https://libretranslate.com');
+        if (backend === 'deepl') {
+          document.getElementById('cfg_translation_api_key_deepl').value = c.translation_api_key || '';
+        } else {
+          document.getElementById('cfg_translation_api_key_libre').value = c.translation_api_key || '';
+        }
+        refreshTranslationCache();
+      } catch (e) { /* silent — tab may not be visible yet */ }
+    }
+
+    function toggleTranslationSettings(enabled) {
+      const panel = document.getElementById('translationSettingsPanel');
+      if (panel) panel.style.display = enabled ? 'block' : 'none';
+      if (enabled) refreshTranslationCache();
+    }
+
+    function updateTranslationBackendUI() {
+      const backend = document.getElementById('cfg_translation_backend').value;
+      const libreEl = document.getElementById('libreTranslateSettings');
+      const deeplEl = document.getElementById('deeplSettings');
+      if (libreEl) libreEl.style.display = backend === 'libretranslate' ? 'block' : 'none';
+      if (deeplEl) deeplEl.style.display = backend === 'deepl' ? 'block' : 'none';
+      // MyMemory needs no config — both panels hidden
+    }
+
+    async function testTranslation() {
+      const statusEl = document.getElementById('translationTestStatus');
+      statusEl.textContent = 'Testing…';
+      statusEl.style.color = '';
+      try {
+        const res = await fetch('/api/admin/translation/test', { credentials: 'include' });
+        const data = await res.json();
+        if (data.ok) {
+          statusEl.textContent = `✓ Working — "${data.input}" → "${data.output}" (${data.lang})`;
+          statusEl.style.color = 'var(--status-ok, green)';
+        } else {
+          statusEl.textContent = '✗ ' + (data.error || 'Test failed');
+          statusEl.style.color = 'var(--status-danger)';
+        }
+      } catch (e) {
+        statusEl.textContent = '✗ ' + e.message;
+        statusEl.style.color = 'var(--status-danger)';
+      }
+    }
+
+    async function refreshTranslationCache() {
+      const list = document.getElementById('translationCacheList');
+      if (!list) return;
+      try {
+        const res = await fetch('/api/admin/translation/cache', { credentials: 'include' });
+        const data = await res.json();
+        const rows = data.rows || [];
+        if (rows.length === 0) {
+          list.innerHTML = '<span class="muted">No cached translations yet.</span>';
+          return;
+        }
+        list.innerHTML = '<table style="width:100%; border-collapse:collapse;">' +
+          '<thead><tr>' +
+          '<th style="text-align:left; padding:4px 8px;">Template</th>' +
+          '<th style="text-align:left; padding:4px 8px;">Language</th>' +
+          '<th style="text-align:right; padding:4px 8px;">Size</th>' +
+          '<th style="text-align:left; padding:4px 8px;">Cached</th>' +
+          '<th style="width:60px;"></th>' +
+          '</tr></thead><tbody>' +
+          rows.map(r => '<tr style="border-top:1px solid var(--border);">' +
+            '<td style="padding:4px 8px;">' + escapeHtml(r.template_name || 'Template ' + r.template_id) + '</td>' +
+            '<td style="padding:4px 8px; text-transform:uppercase; font-weight:600;">' + escapeHtml(r.lang) + '</td>' +
+            '<td style="padding:4px 8px; text-align:right;">' + formatBytes(r.size_bytes) + '</td>' +
+            '<td style="padding:4px 8px; color:var(--text-muted); font-size:0.82rem;">' + escapeHtml(r.cached_at || '') + '</td>' +
+            '<td style="padding:4px 8px;">' +
+              '<button class="danger" style="padding:2px 8px; font-size:0.8rem;" onclick="clearTranslationCacheEntry(' + r.template_id + ',' + JSON.stringify(r.lang) + ')">Clear</button>' +
+            '</td>' +
+          '</tr>').join('') +
+          '</tbody></table>';
+      } catch (e) {
+        list.innerHTML = '<span class="muted">Error loading cache: ' + escapeHtml(e.message) + '</span>';
+      }
+    }
+
+    async function clearTranslationCache() {
+      if (!await showConfirm('Clear all translation cache?', 'All cached translations will be rebuilt on next visitor request.')) return;
+      try {
+        await fetch('/api/admin/translation/cache', { method: 'DELETE', credentials: 'include' });
+        await refreshTranslationCache();
+      } catch (e) {
+        await showAlert('Error: ' + e.message);
+      }
+    }
+
+    async function clearTranslationCacheEntry(templateId, lang) {
+      try {
+        await fetch('/api/admin/translation/cache/' + templateId + '/' + encodeURIComponent(lang),
+          { method: 'DELETE', credentials: 'include' });
+        await refreshTranslationCache();
+      } catch (e) {
+        await showAlert('Error: ' + e.message);
       }
     }
 
@@ -4311,7 +4762,7 @@
       const img = document.getElementById('qrImg');
       if (img.dataset.url !== url) {
         img.dataset.url = url;
-        img.src = '/api/admin/qr-code?cb=' + encodeURIComponent(url);
+        img.data = '/api/admin/qr-code?cb=' + encodeURIComponent(url);
       }
     }
 
@@ -4335,7 +4786,7 @@
         .then(blob => {
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = 'viewer-qr.png';
+          a.download = 'viewer-qr.svg';
           a.click();
           setTimeout(() => URL.revokeObjectURL(a.href), 5000);
         })
@@ -4697,6 +5148,7 @@
       // Per-sub-tab data refresh hooks. Same pattern as switchMainTab —
       // refresh-on-open keeps the UI fresh without polling when not visible.
       if (name === 'public-access') loadCloudflaredStatus();
+      if (name === 'viewer-translation') loadTranslationSettings();
     }
 
     async function saveSetting(key, value) {
@@ -5188,6 +5640,8 @@
       const tr = document.createElement('tr');
       tr.draggable = true;
       tr.dataset.id = seq.id;
+      tr.dataset.seqName = seq.name || '';
+      tr.dataset.seqDisplay = seq.display_name || seq.name || '';
 
       const art = seq.image_url
         ? `<img class="art-thumb" src="${escapeAttr(seq.image_url)}" onclick="promptImageUrl(${seq.id}, ${JSON.stringify(seq.image_url || '').replace(/"/g,'&quot;')})" title="Click to change artwork" />`
@@ -5212,9 +5666,18 @@
                    title="Minutes to suppress this sequence after it plays. 0 = no cooldown." /></td>
         <td style="white-space: nowrap;">
           <button class="secondary" onclick="openTrackSearchModal(${seq.id})" title="Search iTunes / MusicBrainz for the right title, artist, and cover" style="margin-right: 0.4rem;">🔍 Search</button>
+          ${seq.media_name ? '<button class="secondary sp-lang-btn" style="margin-right: 0.4rem;" title="Manage alternate-language audio variants">🌐 Languages</button>' : ''}
           <button class="danger" onclick="delSeq(${seq.id})">Delete</button>
         </td>
       `;
+
+      // Language variants button
+      const langBtn = tr.querySelector('.sp-lang-btn');
+      if (langBtn) {
+        langBtn.addEventListener('click', () => {
+          openLanguageModal(tr.dataset.seqName, tr.dataset.seqDisplay);
+        });
+      }
 
       // Drag handlers
       tr.addEventListener('dragstart', onDragStart);

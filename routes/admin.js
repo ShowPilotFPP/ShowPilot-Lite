@@ -243,6 +243,11 @@ router.put('/config', requireAdmin, (req, res) => {
     'pwa_viewer_enabled',
     'pwa_viewer_name',
     'pwa_viewer_icon',
+    // Translation settings
+    'translation_enabled',
+    'translation_backend',
+    'translation_api_url',
+    'translation_api_key',
   ];
   const updates = {};
   for (const k of allowed) {
@@ -497,6 +502,11 @@ function updateSequence(req, res) {
 
 router.delete('/sequences/:id', requireAdmin, (req, res) => {
   const id = Number(req.params.id);
+  // Delete dependent rows first — jukebox_queue and votes have FK references
+  // to sequences(id). Deleting the sequence without clearing dependents throws
+  // a FK constraint error.
+  db.prepare(`DELETE FROM jukebox_queue WHERE sequence_id = ?`).run(id);
+  db.prepare(`DELETE FROM votes WHERE sequence_id = ?`).run(id);
   db.prepare(`DELETE FROM sequences WHERE id = ?`).run(id);
   res.json({ ok: true });
 });
@@ -853,6 +863,80 @@ router.get('/stats/audience', requireAdmin, (req, res) => {
 // Show the current show token (for pasting into FPP plugin)
 router.get('/show-token', requireAdmin, (req, res) => {
   res.json({ showToken: config.showToken });
+});
+
+// ============================================================
+// Translation management endpoints (v0.5.45+)
+// ============================================================
+
+router.get('/translation/cache', requireAdmin, (req, res) => {
+  try {
+    const { getTranslationCacheStats } = require('../lib/translator');
+    const rows = getTranslationCacheStats();
+    const enriched = rows.map(r => {
+      const tpl = db.prepare(`SELECT name FROM viewer_page_templates WHERE id = ? LIMIT 1`).get(r.template_id);
+      return { ...r, template_name: tpl ? tpl.name : null };
+    });
+    res.json({ ok: true, rows: enriched });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/translation/cache', requireAdmin, (req, res) => {
+  try {
+    const { clearTranslationCache } = require('../lib/translator');
+    clearTranslationCache();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/translation/cache/:templateId/:lang', requireAdmin, (req, res) => {
+  try {
+    db.prepare(`DELETE FROM translation_cache WHERE template_id = ? AND lang = ?`)
+      .run(Number(req.params.templateId), req.params.lang);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/translation/test', requireAdmin, async (req, res) => {
+  try {
+    const { getConfig } = require('../lib/db');
+    const cfg = getConfig();
+    if (cfg.translation_enabled !== 1) {
+      return res.json({ ok: false, error: 'Translation is not enabled' });
+    }
+    const backend = cfg.translation_backend || 'mymemory';
+    const https = require('https');
+    const testInput = 'Now playing';
+    const lang = 'es';
+    let output;
+    if (backend === 'deepl') {
+      const apiKey = cfg.translation_api_key || '';
+      if (!apiKey) return res.json({ ok: false, error: 'DeepL API key not configured' });
+      const r = await new Promise((resolve, reject) => {
+        const data = JSON.stringify({ text: [testInput], target_lang: 'ES' });
+        const req2 = https.request({ hostname: 'api-free.deepl.com', path: '/v2/translate', method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `DeepL-Auth-Key ${apiKey}`, 'Content-Length': Buffer.byteLength(data) }
+        }, res2 => { let b=''; res2.on('data',c=>b+=c); res2.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); });
+        req2.on('error', reject); req2.write(data); req2.end();
+      });
+      output = r.translations?.[0]?.text || testInput;
+    } else {
+      const r = await new Promise((resolve, reject) => {
+        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(testInput)}&langpair=en|${lang}`;
+        https.get(url, res2 => { let b=''; res2.on('data',c=>b+=c); res2.on('end',()=>{ try{resolve(JSON.parse(b))}catch(e){reject(e)} }); }).on('error', reject);
+      });
+      output = r?.responseData?.translatedText || testInput;
+    }
+    res.json({ ok: true, input: testInput, output, lang, backend });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ============================================================
@@ -1626,15 +1710,15 @@ router.get('/qr-code', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'viewer_url not configured' });
   }
   try {
-    const png = await QRCode.toBuffer(url, {
-      type: 'png',
-      width: 300,
+    const svg = await QRCode.toString(url, {
+      type: 'svg',
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },
     });
-    res.set('Content-Type', 'image/png');
+    const scalable = svg.replace(/(<svg[^>]*)\s+width="[^"]*"\s+height="[^"]*"/, '$1');
+    res.set('Content-Type', 'image/svg+xml');
     res.set('Cache-Control', 'private, max-age=3600');
-    res.send(png);
+    res.send(scalable);
   } catch (err) {
     console.error('[qr-code] generation failed:', err.message);
     res.status(500).json({ error: 'QR generation failed' });

@@ -357,7 +357,7 @@ app.get('/viewer-manifest.json', (req, res) => {
 });
 
 // Viewer page at root — renders the active template through the RF-compatible renderer.
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   try {
     const { renderTemplate, getActiveTemplate } = require('./lib/viewer-renderer');
     const { db, getConfig, getNowPlaying, getNextUp } = require('./lib/db');
@@ -463,6 +463,22 @@ app.get('/', (req, res) => {
       isAdmin,
     });
 
+    // Translation
+    let finalHtml = html;
+    if (!req.query.preview && cfg.translation_enabled === 1) {
+      try {
+        const { translateHtml, parseAcceptLanguage } = require('./lib/translator');
+        const { createHash } = require('crypto');
+        const langs = parseAcceptLanguage(req.headers['accept-language']);
+        if (langs.length > 0) {
+          const templateHash = createHash('sha256').update(tpl.html || '').digest('hex').slice(0, 16);
+          finalHtml = await translateHtml(html, langs[0], tpl.id, cfg, templateHash);
+        }
+      } catch (e) {
+        console.error('[viewer] translation error (serving original):', e.message);
+      }
+    }
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     // The viewer page is dynamic per-request (current sequences, vote counts,
     // now-playing). Without explicit cache headers, browsers apply heuristic
@@ -489,10 +505,10 @@ app.get('/', (req, res) => {
     // (or whichever section). Skipped automatically for the preview iframe so
     // the visual designer keeps working.
     if (cfg.viewer_source_obfuscate === 1 && !req.query.preview) {
-      const encoded = Buffer.from(html, 'utf8').toString('base64');
+      const encoded = Buffer.from(finalHtml, 'utf8').toString('base64');
       res.send(buildObfuscationStub(encoded));
     } else {
-      res.send(html);
+      res.send(finalHtml);
     }
   } catch (err) {
     console.error('Error rendering viewer page:', err);

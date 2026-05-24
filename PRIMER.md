@@ -210,7 +210,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.44, May 2026)
+## Recent state (as of v0.5.46, May 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -233,6 +233,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.20 – 0.5.43 | Multiple feature/fix releases not enumerated here. Search git log or past chat history for specific provenance. |
 | 0.5.44 | Security: remove CORS `credentials:true` wildcard from Socket.io init and HTTP middleware (mirrors main v0.33.175). Fix `getClientIp()` to use `req.ip` instead of reading `x-forwarded-for` directly, preventing IP block list bypass on direct-exposure installs. Audio mimeType allowlist not applicable to Lite (no audio upload routes). |
 | 0.5.45 | (mirrors main v0.33.176–v0.33.191, non-audio changes only) QR code switched from PNG to SVG for perfect scaling. Sequence delete now clears jukebox_queue/votes FK rows first (fixes 500 error). Demo banner gated on demoMode config flag — no longer injected on production installs. Automatic viewer page translation via MyMemory (free, no key): server-side HTML translation on `Accept-Language`, SQLite cache keyed on template hash, admin UI under Viewer Page → Translation sub-tab. Player UI strings translated via client-side `_pt()` lookup table (ES/FR/DE/PT/IT/PL). rf-compat v=76. Admin content area widened to 1600px. Language variant admin modal for multi-language audio management. All admin inline `onclick` quoting bugs fixed (use addEventListener + data attrs). |
+| 0.5.46 | (mirrors main v0.33.191 PR changes) querySelectorAll live updates for `.now-playing-text`, `[data-showpilot-next]`, queue size, and queue list — fixes templates with duplicate `{NEXT_PLAYLIST}` / `{PLAYLISTS}` blocks only updating one copy. Jukebox handoff re-return in non-interrupt mode so FPP keeps queued songs when it polls between handoff and playback. Baseline snapshot captured on first jukebox add (interrupt and non-interrupt mode). Interrupt-mode auto-detection in `/next`. `nextScheduled` socket listener added to rf-compat. rf-compat v=77. |
 
 ---
 

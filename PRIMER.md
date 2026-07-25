@@ -90,7 +90,7 @@ Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 - Port: `3100`
 - Public access: not currently exposed; runs on LAN only
 - Restart: `sudo systemctl restart showpilot-lite`
-- Logs: `/home/fpp/media/logs/showpilot-lite.log` and `journalctl -u showpilot-lite`
+- Logs: `/home/fpp/media/logs/plugin-ShowPilot-Lite.log` (FPP log-viewer naming convention) and `journalctl -u showpilot-lite`
 
 **The data symlink** is important and easy to misunderstand. The plugin's `./data/` is a symlink to `/home/fpp/media/plugindata/ShowPilot-Lite/`. This lets the application's hardcoded relative path (`path.join(__dirname, '..', 'data', ...)` in `cover-art.js`) work unchanged while putting actual files under FPP's plugindata where FPP's backup feature finds them. Reinstalling the plugin re-clones the source dir but the symlink target survives.
 

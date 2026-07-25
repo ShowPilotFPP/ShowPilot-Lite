@@ -55,13 +55,19 @@ else
 fi
 
 if [ "$NEED_NODE_INSTALL" = "1" ]; then
-    # NodeSource setup script handles the apt repo + key. We pipe through
-    # bash directly because that's the upstream-recommended idiom and
-    # FPP plugin installs are already running with elevated privileges.
+    # Add the NodeSource apt repo directly (GPG key + sources.list.d entry)
+    # instead of piping their setup script into a shell. FPP plugin installs
+    # already run as root, so no sudo is needed here either.
     echo "[install] Adding NodeSource apt repo for Node 22.x..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    apt-get install -y ca-certificates gnupg
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL --connect-timeout 10 --max-time 30 https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list
+    apt-get update
     echo "[install] Installing nodejs..."
-    sudo apt-get install -y nodejs
+    apt-get install -y nodejs
     echo "[install] Installed: $(node -v)"
 fi
 
@@ -180,8 +186,8 @@ ExecStart=/usr/bin/node ${PLUGIN_DIR}/server.js
 # the crash case and the intentional-restart case.
 Restart=always
 RestartSec=5
-StandardOutput=append:/home/fpp/media/logs/showpilot-lite.log
-StandardError=append:/home/fpp/media/logs/showpilot-lite.log
+StandardOutput=append:/home/fpp/media/logs/plugin-ShowPilot-Lite.log
+StandardError=append:/home/fpp/media/logs/plugin-ShowPilot-Lite.log
 
 [Install]
 WantedBy=multi-user.target
@@ -203,7 +209,7 @@ if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "    http://$(hostname -I | awk '{print $1}'):3100/"
     echo
     echo "Default login: admin / admin (you'll be prompted to change)"
-    echo "Logs:    /home/fpp/media/logs/showpilot-lite.log"
+    echo "Logs:    /home/fpp/media/logs/plugin-ShowPilot-Lite.log"
     echo "Service: systemctl status $SERVICE_NAME"
     echo "============================================================"
 else

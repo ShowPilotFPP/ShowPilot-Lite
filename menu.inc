@@ -3,8 +3,11 @@
 # ShowPilot-Lite — FPP menu integration
 # ============================================================
 # Adds a single entry to FPP's "Content Setup" menu that opens the
-# ShowPilot-Lite admin UI in a new tab. The URL is built dynamically
-# from the host the user is browsing FPP from.
+# ShowPilot-Lite admin UI. Routed through open.php (see that file) so
+# FPP's plugin-manager "Open" button — which statically scans this
+# file for a literal page=....php value rather than executing it —
+# can discover a working URL. open.php does the actual host-based
+# redirect to the real admin UI (port 3100) at request time.
 #
 # This file follows FPP's standard menu.inc convention: define
 # $menuEntries, then run the render loop that emits <li><a> HTML
@@ -13,46 +16,35 @@
 # is defined but no link is ever printed.
 # ============================================================
 
-# Build the URL using the host the browser used to reach FPP. This
-# avoids hard-coding "192.168.x.x" or "fpp.local" — whatever resolves
-# for the user's browser will resolve here too. Strip any :port
-# suffix so we can substitute Lite's port (3100).
-$host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_ADDR'] ?? 'localhost';
-$hostNoPort = preg_replace('/:\d+$/', '', $host);
-$showpilotUrl = 'http://' . $hostNoPort . ':3100/';
-
 $menuEntries = Array(
     Array(
         'text' => 'ShowPilot-Lite',
         'type' => 'content',
-        'page' => $showpilotUrl,
+        'page' => 'open.php',
         'wrap' => 0
     )
 );
 
 ##############################################################################
 # Render the menu entries that match the current $menu section.
-# FPP sets $plugin and $menu before requiring this file. http(s)://
-# pages emit a plain external link with target=_blank; relative pages
-# go through plugin.php for FPP-chrome wrapping.
+# FPP sets $plugin and $menu before requiring this file.
 foreach ($menuEntries as $entry)
 {
     if ($entry['type'] != $menu)
         continue;
 
-    if (preg_match('/^http.?:\/\//', $entry['page']))
-    {
-        printf("<li><a href='%s' target='_blank'>%s</a></li>\n",
-            $entry['page'], $entry['text']);
-    }
-    else
-    {
-        $nopage = '';
-        if (isset($entry['wrap']) && ($entry['wrap'] == 0))
-            $nopage = '&nopage=1';
+    $nopage = '';
+    if (isset($entry['wrap']) && ($entry['wrap'] == 0))
+        $nopage = '&nopage=1';
 
-        printf("<li><a href='plugin.php?plugin=%s&page=%s%s'>%s</a></li>\n",
-            $plugin, $entry['page'], $nopage, $entry['text']);
-    }
+    // Param order matters: nopage=1 MUST come before page=... . FPP's
+    // plugin-manager scanner (10.x beta+, July 2026) extracts page=
+    // via a substring regex, not a real query parser — "nopage=1"
+    // itself contains the substring "page=1", so if it lands AFTER
+    // our real page=open.php the scanner's greedy match grabs "1"
+    // instead, breaking the Open button the same way it broke the
+    // main ShowPilot plugin. Putting nopage first avoids the collision.
+    printf("<li><a href='plugin.php?plugin=%s%s&page=%s'>%s</a></li>\n",
+        $plugin, $nopage, $entry['page'], $entry['text']);
 }
 ?>

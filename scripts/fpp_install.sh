@@ -4,7 +4,7 @@
 # ============================================================
 # FPP runs this after `git clone`-ing the plugin into
 # /home/fpp/media/plugins/ShowPilot-Lite/. It must:
-#   1. Ensure Node 18+ is available (install via NodeSource if not)
+#   1. Ensure Node 22+ is available (install via NodeSource if not)
 #   2. Set up the data directory (under FPP's plugindata, so FPP backups capture it)
 #   3. Write a config.js if one doesn't exist
 #   4. Compile native deps via `npm install --omit=dev`
@@ -36,16 +36,18 @@ echo "Data dir:    $DATA_DIR"
 echo
 
 # ---------------------------------------------------------------
-# 1. Node 18+ check / install
+# 1. Node 22+ check / install
 # ---------------------------------------------------------------
+# Node 18 and 20 are both EOL (April 2025 and April 2026 respectively) —
+# pin to 22 (Maintenance LTS, supported through April 2027) as the floor.
 NEED_NODE_INSTALL=0
 if ! command -v node >/dev/null 2>&1; then
-    echo "[install] Node not found — will install Node 18 from NodeSource"
+    echo "[install] Node not found — will install Node 22 from NodeSource"
     NEED_NODE_INSTALL=1
 else
     NODE_MAJOR=$(node -v | sed 's/^v\([0-9]*\).*/\1/')
-    if [ "$NODE_MAJOR" -lt 18 ] 2>/dev/null; then
-        echo "[install] Node $(node -v) is too old (need 18+) — will upgrade"
+    if [ "$NODE_MAJOR" -lt 22 ] 2>/dev/null; then
+        echo "[install] Node $(node -v) is too old (need 22+) — will upgrade"
         NEED_NODE_INSTALL=1
     else
         echo "[install] Node $(node -v) — OK"
@@ -56,8 +58,8 @@ if [ "$NEED_NODE_INSTALL" = "1" ]; then
     # NodeSource setup script handles the apt repo + key. We pipe through
     # bash directly because that's the upstream-recommended idiom and
     # FPP plugin installs are already running with elevated privileges.
-    echo "[install] Adding NodeSource apt repo for Node 18.x..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    echo "[install] Adding NodeSource apt repo for Node 22.x..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     echo "[install] Installing nodejs..."
     sudo apt-get install -y nodejs
     echo "[install] Installed: $(node -v)"

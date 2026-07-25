@@ -31,7 +31,7 @@ ShowPilot-Lite installs as an FPP plugin. From FPP's web UI:
    https://raw.githubusercontent.com/ShowPilotFPP/ShowPilot-Lite/main/pluginInfo.json
    ```
 3. Click **Install**. FPP will clone the repo and run the install script, which:
-   - Installs Node 18 from NodeSource if not already present
+   - Installs Node 22 from NodeSource if not already present
    - Compiles native dependencies (`better-sqlite3`)
    - Sets up a data directory at `/home/fpp/media/plugindata/ShowPilot-Lite/` (backed up by FPP's own backup feature)
    - Drops a `systemd` unit and starts the service on port 3100
@@ -43,8 +43,8 @@ ShowPilot-Lite installs as an FPP plugin. From FPP's web UI:
 If you want to run Lite outside FPP's plugin manager:
 
 ```bash
-# 1. Install Node 18 if not present
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# 1. Install Node 22 if not present
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # 2. Clone and install

@@ -2,15 +2,18 @@
 # ============================================================
 # ShowPilot-Lite — FPP menu integration
 # ============================================================
-# Adds two entries to FPP's "Content Setup" menu: one to the admin
-# UI, one straight to the viewer page. Both are routed through small
-# static redirect files (open.php / open-viewer.php — see those files)
-# so FPP's plugin-manager "Open" button, which statically scans this
-# file for a literal page=....php value rather than executing it, can
-# discover a working URL. The Plugin Manager card only ever shows ONE
-# Open button, and it always picks the FIRST type="content" entry it
-# finds — so Admin is listed first here deliberately. Both entries
-# are still reachable individually from the Content Setup dropdown.
+# Adds a single entry to FPP's "Content Setup" menu, pointing at the
+# admin UI. Routed through a small static redirect file (open.php —
+# see that file) so FPP's plugin-manager "Open" button, which
+# statically scans this file for a literal page=....php value rather
+# than executing it, can discover a working URL.
+#
+# Only one 'content' entry: FPP plugin guidelines cap each menu area
+# (status/content/output/help) at one entry per plugin. The viewer
+# page doesn't need its own menu entry to be reachable — the admin UI
+# already surfaces it in three places: the "Show" link in the header,
+# the Viewer QR Code card, and the "Open viewer page" link on the
+# Viewer Page editor tab.
 #
 # This file follows FPP's standard menu.inc convention: define
 # $menuEntries, then run the render loop that emits <li><a> HTML
@@ -24,12 +27,6 @@ $menuEntries = Array(
         'text' => 'ShowPilot-Lite Admin',
         'type' => 'content',
         'page' => 'open.php',
-        'wrap' => 0
-    ),
-    Array(
-        'text' => 'ShowPilot-Lite Viewer Page',
-        'type' => 'content',
-        'page' => 'open-viewer.php',
         'wrap' => 0
     )
 );

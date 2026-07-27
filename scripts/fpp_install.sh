@@ -8,8 +8,9 @@
 #   2. Set up the data directory (under FPP's plugindata, so FPP backups capture it)
 #   3. Write a config.js if one doesn't exist
 #   4. Compile native deps via `npm install --omit=dev`
-#   5. Install + enable a systemd unit so it starts on boot
-#   6. Start the service
+#   5. Install + enable the main systemd unit so it starts on boot
+#   6. Install + enable the Cloudflare Tunnel privileged helper unit
+#   7. Start both services
 #
 # Idempotent: re-running after a plugin update should be safe. We
 # only do destructive steps (overwriting config) when the file is
@@ -19,6 +20,11 @@
 # so the install fails loudly rather than silently — better for the
 # user to see "Node install failed" than to find ShowPilot-Lite
 # silently broken later.
+#
+# This entire script runs as root (fppd has no User= set, so it and
+# everything it shells out to for plugin install/upgrade/uninstall runs
+# as root) — every command below runs directly, with no privilege
+# escalation, for exactly that reason.
 # ============================================================
 
 set -e
@@ -27,6 +33,8 @@ PLUGIN_DIR="/home/fpp/media/plugins/ShowPilot-Lite"
 DATA_DIR="/home/fpp/media/plugindata/ShowPilot-Lite"
 SERVICE_NAME="showpilot-lite"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+CFHELPER_SERVICE_NAME="showpilot-lite-cfhelper"
+CFHELPER_SERVICE_FILE="/etc/systemd/system/${CFHELPER_SERVICE_NAME}.service"
 
 echo "============================================================"
 echo "ShowPilot-Lite install"
@@ -56,8 +64,7 @@ fi
 
 if [ "$NEED_NODE_INSTALL" = "1" ]; then
     # Add the NodeSource apt repo directly (GPG key + sources.list.d entry)
-    # instead of piping their setup script into a shell. FPP plugin installs
-    # already run as root, so no sudo is needed here either.
+    # instead of piping their setup script into a shell.
     echo "[install] Adding NodeSource apt repo for Node 22.x..."
     apt-get install -y ca-certificates gnupg
     mkdir -p /etc/apt/keyrings
@@ -82,9 +89,9 @@ fi
 #   - Reinstalling the plugin doesn't wipe the user's data (only the
 #     plugin source dir is re-cloned; the symlink target survives)
 echo "[install] Ensuring data dir exists: $DATA_DIR"
-sudo mkdir -p "$DATA_DIR"
-sudo mkdir -p "$DATA_DIR/covers"
-sudo chown -R fpp:fpp "$DATA_DIR"
+mkdir -p "$DATA_DIR"
+mkdir -p "$DATA_DIR/covers"
+chown -R fpp:fpp "$DATA_DIR"
 
 # If the plugin dir has a real ./data/ directory from a prior non-symlink
 # install or a stray git checkout, migrate its contents into plugindata
@@ -92,14 +99,14 @@ sudo chown -R fpp:fpp "$DATA_DIR"
 if [ -d "$PLUGIN_DIR/data" ] && [ ! -L "$PLUGIN_DIR/data" ]; then
     echo "[install] Migrating existing $PLUGIN_DIR/data/ contents into $DATA_DIR..."
     # Copy with -a to preserve perms, then drop the original.
-    sudo cp -a "$PLUGIN_DIR/data/." "$DATA_DIR/"
-    sudo rm -rf "$PLUGIN_DIR/data"
+    cp -a "$PLUGIN_DIR/data/." "$DATA_DIR/"
+    rm -rf "$PLUGIN_DIR/data"
 fi
 
 # Create or refresh the symlink. -n stops `ln -sf` from following an
 # existing symlink and creating the new link inside the target dir.
-sudo ln -snf "$DATA_DIR" "$PLUGIN_DIR/data"
-sudo chown -h fpp:fpp "$PLUGIN_DIR/data"
+ln -snf "$DATA_DIR" "$PLUGIN_DIR/data"
+chown -h fpp:fpp "$PLUGIN_DIR/data"
 
 # ---------------------------------------------------------------
 # 3. Config file
@@ -146,7 +153,7 @@ module.exports = {
   logLevel: 'info',
 };
 EOF
-    sudo chown fpp:fpp "$CONFIG_FILE"
+    chown fpp:fpp "$CONFIG_FILE"
 fi
 
 # ---------------------------------------------------------------
@@ -158,17 +165,22 @@ fi
 # running so a clean install always succeeds.
 if [ -d "/home/fpp/.npm" ]; then
     echo "[install] Fixing npm cache ownership (root-owned files cause EACCES)..."
-    sudo chown -R fpp:fpp /home/fpp/.npm
+    chown -R fpp:fpp /home/fpp/.npm
 fi
 echo "[install] Running npm install --omit=dev (this may take a minute)..."
-cd "$PLUGIN_DIR"
-sudo -u fpp npm install --omit=dev --no-audit --no-fund
+# Deliberately dropping from root down to fpp for this step (not just
+# running it as root, which would leave root-owned files under
+# node_modules/ and /home/fpp/.npm): runuser, not su, since it doesn't
+# need a password prompt or a full login shell, just a different uid.
+# Wrapped in `bash -c 'cd ... && ...'` rather than relying on runuser to
+# inherit our cwd, since that's not guaranteed across implementations.
+runuser -u fpp -- bash -c "cd '$PLUGIN_DIR' && npm install --omit=dev --no-audit --no-fund"
 
 # ---------------------------------------------------------------
-# 5. systemd unit
+# 5. Main systemd unit
 # ---------------------------------------------------------------
 echo "[install] Writing systemd unit: $SERVICE_FILE"
-sudo tee "$SERVICE_FILE" >/dev/null <<EOF
+cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=ShowPilot-Lite (FPP-resident voting / jukebox / now-playing display)
 After=network.target fppd.service
@@ -193,14 +205,53 @@ StandardError=append:/home/fpp/media/logs/plugin-ShowPilot-Lite.log
 WantedBy=multi-user.target
 EOF
 
-echo "[install] Reloading systemd, enabling + starting service..."
-sudo systemctl daemon-reload
-sudo systemctl enable "$SERVICE_NAME"
-sudo systemctl restart "$SERVICE_NAME"
+# ---------------------------------------------------------------
+# 6. Cloudflare Tunnel privileged helper unit
+# ---------------------------------------------------------------
+# Runs as root so the main app (User=fpp, above) never has to escalate
+# privilege itself to install/manage cloudflared — it just asks this
+# small, single-purpose daemon over a local Unix socket. See
+# lib/cfhelper-daemon.js for the protocol and full rationale.
+#
+# RuntimeDirectory=showpilot-lite-cfhelper creates /run/showpilot-lite-cfhelper
+# (mode 0750) before the daemon starts; Group=fpp means both that directory
+# and the socket file the daemon creates inside it are group-owned by fpp,
+# so the main app (also running as fpp) can reach the socket and no one
+# else can. NoNewPrivileges=true is safe here (the daemon already has every
+# privilege it needs as root, uid 0) and blocks it from gaining any more.
+echo "[install] Writing systemd unit: $CFHELPER_SERVICE_FILE"
+cat > "$CFHELPER_SERVICE_FILE" <<EOF
+[Unit]
+Description=ShowPilot-Lite Cloudflare Tunnel privileged helper
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=fpp
+RuntimeDirectory=showpilot-lite-cfhelper
+RuntimeDirectoryMode=0750
+NoNewPrivileges=true
+ExecStart=/usr/bin/node ${PLUGIN_DIR}/lib/cfhelper-daemon.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "[install] Reloading systemd, enabling + starting services..."
+systemctl daemon-reload
+systemctl enable "$SERVICE_NAME"
+systemctl enable "$CFHELPER_SERVICE_NAME"
+systemctl restart "$CFHELPER_SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
 
 # Give it a beat to come up, then check status
 sleep 2
-if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
+if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo
     echo "============================================================"
     echo "ShowPilot-Lite is running."

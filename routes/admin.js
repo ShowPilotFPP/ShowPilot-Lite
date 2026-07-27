@@ -13,6 +13,7 @@ const router = express.Router();
 const config = require('../lib/config-loader');
 const { db, getConfig, updateConfig,
         listSnapshots, createSnapshot, restoreSnapshot, deleteSnapshot, renameSnapshot } = require('../lib/db');
+const { assertIdent } = require('../lib/sql-ident');
 
 // ============================================================
 // Rate limiting
@@ -495,8 +496,11 @@ function updateSequence(req, res) {
   }
   if (Object.keys(updates).length === 0) return res.json({ ok: true });
 
-  const setClause = Object.keys(updates).map(k => `${k} = @${k}`).join(', ');
-  db.prepare(`UPDATE sequences SET ${setClause} WHERE id = @id`).run({ ...updates, id });
+  const updateKeys = Object.keys(updates);
+  updateKeys.forEach(assertIdent);
+  const setClause = updateKeys.map(k => `${k} = @${k}`).join(', ');
+  const sql = 'UPDATE sequences SET ' + setClause + ' WHERE id = @id';
+  db.prepare(sql).run({ ...updates, id });
   res.json({ ok: true });
 }
 
@@ -998,7 +1002,12 @@ router.put('/templates/:id', requireAdmin, (req, res) => {
   if (updates.length === 0) return res.json({ ok: true });
 
   updates.push('updated_at = @now');
-  db.prepare(`UPDATE viewer_page_templates SET ${updates.join(', ')} WHERE id = @id`).run(params);
+  // updates is always assembled above from a fixed menu of hardcoded
+  // "col = @col" clause literals, never a dynamically-named column, but
+  // the SQL string is still built as its own variable rather than a
+  // template literal passed directly to .prepare().
+  const sql = 'UPDATE viewer_page_templates SET ' + updates.join(', ') + ' WHERE id = @id';
+  db.prepare(sql).run(params);
   res.json({ ok: true });
 });
 
@@ -1105,7 +1114,11 @@ router.post('/templates/:id/draft', requireAdmin, (req, res) => {
   const params = { id, draft_html: draftHtml, mode: mode || 'code' };
   if (settingsJson) { updates.push('settings_json = @settings_json'); params.settings_json = settingsJson; }
   if (blocksJson) { updates.push('blocks_json = @blocks_json'); params.blocks_json = blocksJson; }
-  db.prepare(`UPDATE viewer_page_templates SET ${updates.join(', ')} WHERE id = @id`).run(params);
+  // Same reasoning as the sibling PATCH handler above: updates is a fixed
+  // menu of hardcoded clause literals, but the SQL is still built outside
+  // of .prepare()'s argument.
+  const sql = 'UPDATE viewer_page_templates SET ' + updates.join(', ') + ' WHERE id = @id';
+  db.prepare(sql).run(params);
 
   res.json({ ok: true, html: draftHtml });
 });
@@ -1257,7 +1270,11 @@ router.post('/sequences/:id/apply-search-result', requireAdmin, async (req, res)
     params.push(localCoverPath);
   }
   params.push(id);
-  db.prepare(`UPDATE sequences SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  // updates is always a fixed menu of hardcoded "col = ?" clause literals
+  // (never a dynamically-named column), but the SQL is still built
+  // outside of .prepare()'s argument.
+  const sql = 'UPDATE sequences SET ' + updates.join(', ') + ' WHERE id = ?';
+  db.prepare(sql).run(...params);
 
   const io = req.app.get('io');
   if (io) io.emit('sequencesReordered');
@@ -1337,7 +1354,10 @@ router.post('/sequences/scrape-all-metadata', requireAdmin, async (req, res) => 
   const where = skipExisting
     ? `WHERE visible = 1 AND (artist IS NULL OR artist = '')`
     : `WHERE visible = 1`;
-  const rows = db.prepare(`SELECT id, name FROM sequences ${where}`).all();
+  // where is always one of the two fixed literals above, but the SQL is
+  // still built outside of .prepare()'s argument.
+  const sql = 'SELECT id, name FROM sequences ' + where;
+  const rows = db.prepare(sql).all();
 
   res.json({ ok: true, queued: rows.length });
 

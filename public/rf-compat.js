@@ -951,14 +951,15 @@
   // artist, image_url, and vote count. Order matters (admin-controlled
   // ordering is meaningful). Mode is included so a JUKEBOX→VOTING flip
   // forces a rebuild even if sequences are identical.
-  function computeGridSignature(sequences, voteCountsByName, mode) {
-    const parts = [mode];
+  function computeGridSignature(sequences, voteCountsByName, mode, catOpts) {
+    const parts = [mode, 'cat:' + (catOpts && catOpts.categoryHeaders === false ? '0' : '1') + ':' + ((catOpts && catOpts.uncategorizedLabel) || '')];
     for (const s of sequences) {
       parts.push(
         s.name + '|' +
         (s.display_name || '') + '|' +
         (s.artist || '') + '|' +
         (s.image_url || '') + '|' +
+        (s.category || '') + '|' +
         (voteCountsByName[s.name] || 0)
       );
     }
@@ -973,8 +974,30 @@
   // data-seq-name values because that's what the server-side renderer
   // does — escapeAttr doesn't escape ' or > and would produce
   // divergent markup for sequences with those chars in their names.
-  function renderRowsForMode(sequences, voteCountsByName, mode) {
-    return sequences.map(seq => {
+  // Mirror of lib/viewer-renderer.js#withCategoryHeaders — change both.
+  // The list arrives pre-grouped from /api/state; emit a header row each
+  // time the category changes.
+  function withCategoryHeaders(sequences, opts, rowFn) {
+    const on = !opts || opts.categoryHeaders !== false;
+    const anyCat = on && sequences.some(s => s.category && String(s.category).trim());
+    if (!anyCat) return sequences.map(rowFn);
+    const other = (opts && typeof opts.uncategorizedLabel === 'string' && opts.uncategorizedLabel.trim()) || 'Other';
+    const out = [];
+    let prevKey = null;
+    for (const seq of sequences) {
+      const label = (seq.category && String(seq.category).trim()) || other;
+      const key = label.toLowerCase();
+      if (key !== prevKey) {
+        out.push(`<div class="sequence-category-header" data-showpilot-category="${escapeHtml(label)}">${escapeHtml(label)}</div>`);
+        prevKey = key;
+      }
+      out.push(rowFn(seq));
+    }
+    return out;
+  }
+
+  function renderRowsForMode(sequences, voteCountsByName, mode, catOpts) {
+    return withCategoryHeaders(sequences, catOpts, seq => {
       const safeNameJs = escapeJsString(seq.name);
       const safeNameAttr = escapeHtml(seq.name);
       const safeDisplay = escapeHtml(seq.display_name || seq.name);
@@ -1023,7 +1046,8 @@
 
     const voteCountsByName = {};
     (data.voteCounts || []).forEach(v => { voteCountsByName[v.sequence_name] = v.count; });
-    const desiredSig = computeGridSignature(sequences, voteCountsByName, mode);
+    const catOpts = { categoryHeaders: data.categoryHeaders, uncategorizedLabel: data.uncategorizedLabel };
+    const desiredSig = computeGridSignature(sequences, voteCountsByName, mode, catOpts);
 
     const wrappers = findPlaylistWrappers();
     if (wrappers.length === 0) return; // Empty-initial-load edge case.
@@ -1048,7 +1072,7 @@
       const wrapperSig = _gridSigCache.get(wrapper);
       if (wrapperSig === desiredSig) continue;
 
-      wrapper.innerHTML = renderRowsForMode(sequences, voteCountsByName, targetMode);
+      wrapper.innerHTML = renderRowsForMode(sequences, voteCountsByName, targetMode, catOpts);
       _gridSigCache.set(wrapper, desiredSig);
     }
   }

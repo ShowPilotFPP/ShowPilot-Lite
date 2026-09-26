@@ -223,7 +223,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.57, September 2026)
+## Recent state (as of v0.5.58, September 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -257,6 +257,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.55 | **Mirror of main v0.33.206 — song progress bar.** Opt-in Settings option showing a slim progress bar with time left on every viewer page (top/bottom, time on/off, color), live-updated via `/api/state`; `{NOW_PLAYING_PROGRESS}` placeholder for templates; viewer clock-offset correction (also fixes `{NOW_PLAYING_TIMER}` on phones with a wrong clock). Same code as main, applied by anchor edits (a straight diff did not apply due to nearby context drift). Cache-buster `rf-compat.js?v=79`. **Also mirrors main's "Up Next" fix (community PR #18):** the vote/jukebox return point is cleared whenever a schedule song starts (Jukebox: once its queue drains) or FPP goes idle; `getNextUp` returns null when nothing is playing and skips disabled categories. Main's Docker pipeline change (issue #19) does not apply — Lite has no image workflow. |
 | 0.5.56 | **Mirror of main v0.33.207 — song progress bar sits on the player bar, themed.** Default position "On the player bar": top edge of the now-playing player bar while it's shown, in its theme color; bottom edge of the screen while it's hidden. "Top of the screen" remains. Existing 0.5.55 settings move to the new default. `showBar`/`hideBar`/`applyDecoration` now dispatch `showpilot:player-mode` / `showpilot:player-theme`. Cache-buster `rf-compat.js?v=80`. |
 | 0.5.57 | **Mirror of main v0.33.208 + v0.33.209: full admin redesign (new layout = the whole admin restyled, sidebar with every section and Settings page, new dashboard) with a per-user way back to classic, plus Cockpit tablet mode.** Server changes from main applied cleanly; the admin page edits were applied by anchor (header context differs). Also fixes a Lite-only bug: `updateRaceDurationVisibility()` was called by loadConfig() and the Race settings but never defined, so every settings load threw a ReferenceError (ported from main). |
+| 0.5.58 | **Mirror of main v0.33.210: old "Powered by OpenFalcon" footer on the default viewer page.** Startup cleanup in `lib/db.js` replaces the exact phrase in built-in templates (`html` + `draft_html`) and renames "Default (OpenFalcon)" to "Default (ShowPilot)"; user-created templates untouched; no-op once applied. Also: `LICENSE` copyright holder renamed to "ShowPilot Contributors" (MIT terms unchanged). Also: **bcrypt 5 -> 6** (removes `@mapbox/node-pre-gyp` and its vulnerable `tar`); Lite has no lockfile, and a fresh resolution audits 3 -> 0. Same bcrypt API and hash format as main, where v5 -> v6 sign-in compatibility was tested end to end. |
 
 ---
 

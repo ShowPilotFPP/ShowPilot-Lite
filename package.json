@@ -1,6 +1,6 @@
 {
   "name": "showpilot-lite",
-  "version": "0.5.57",
+  "version": "0.5.58",
   "description": "FPP-resident build of ShowPilot. Voting, jukebox, and now-playing display for self-hosted light shows. Audio streaming removed \u2014 pair with PulseMesh / FM / Icecast.",
   "main": "server.js",
   "scripts": {
@@ -20,7 +20,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^11.3.0",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.1",

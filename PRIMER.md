@@ -223,7 +223,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.60, September 2026)
+## Recent state (as of v0.5.61, September 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -260,6 +260,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.58 | **Mirror of main v0.33.210: old "Powered by OpenFalcon" footer on the default viewer page.** Startup cleanup in `lib/db.js` replaces the exact phrase in built-in templates (`html` + `draft_html`) and renames "Default (OpenFalcon)" to "Default (ShowPilot)"; user-created templates untouched; no-op once applied. Also: `LICENSE` copyright holder renamed to "ShowPilot Contributors" (MIT terms unchanged). Also: **bcrypt 5 -> 6** (removes `@mapbox/node-pre-gyp` and its vulnerable `tar`); Lite has no lockfile, and a fresh resolution audits 3 -> 0. Same bcrypt API and hash format as main, where v5 -> v6 sign-in compatibility was tested end to end. |
 | 0.5.59 | **Mirror of main v0.33.211: new-layout fixes.** Wide tables (e.g. Sequences) were cut off on the right with no way to scroll: `ui-new.css` gave tables `overflow: hidden` and kept the classic 1600px content cap. Now cards scroll horizontally (`overflow-x: auto`), tables no longer clip, and content uses the full width beside the rail. The page title in the top bar is styled explicitly (color/display/visibility) after a report that it was missing in a real browser (not reproducible in jsdom). The address bar now follows navigation (`?section=<tab>`, via `history.replaceState`) so a refresh stays on the same section; syncing starts only after setup so an incoming `?section=` link isn't erased (caught in testing). The menu rail also collapses as soon as the mouse leaves it: it used to stay expanded after a click (the clicked button kept focus under `:focus-within`). Expansion on focus is now keyboard-only (`:has(:focus-visible)`, in separate rules so browsers without `:has()` keep hover), and mouse clicks release focus. |
 | 0.5.60 | **Mirror of main v0.33.212: new layout on phones and tablets.** On phones and touch-only devices (`(max-width: 760px), (hover: none)` — same query in `ui-new.css` and `isDrawerMode()` in `ui-new.js`) the hover-expand rail couldn't work and its Settings sub-pages were unreachable. There the rail is now a slide-out menu: a menu button (`#spnMenuBtn`) at the start of the top bar opens it over a backdrop; tapping a section with sub-pages expands/collapses it instead of navigating; tapping a page navigates and closes the menu; backdrop tap and Escape close it. The page uses the full width (no 72px rail), the top bar wraps, and the dashboard's control strip stacks with full-width mode buttons. Desktop with a mouse is unchanged. Tested in jsdom as a touch device and as desktop, both repos. Also: **README.md audited against the code** — requirements section added (FPP 8.0+, matching pluginInfo.json), cover art is MusicBrainz/iTunes (not Spotify), comparison rows for the progress bar, new admin + Cockpit and Cloudflare Tunnel, install steps match the installer (Cloudflare helper service, **ShowPilot-Lite Admin** menu entry). |
+| 0.5.61 | **Mirror of main v0.33.214: customizable Cockpit.** Tile grid from each user's saved layout, edited in place ("Edit layout"), saved per user; Settings → Cockpit page; rows grow with content. Same catalog as main (all its settings exist in Lite). |
 
 ---
 
@@ -293,6 +294,16 @@ What `SPNew.apply()` does, all additively:
 **Themes live in two places:** the classic page's inline CSS (used by the admin in both layouts) and `themes.css` (Cockpit). Change both, plus `ALLOWED_THEMES` in `routes/admin.js`.
 
 Tested with the real admin page running its scripts in jsdom against a live server (both repos): new layout by default, rail built from real sections and all Settings sub-pages, Settings > Voting opens with the right title, Dashboard always shows the new dashboard, header controls moved, notice shown, classic preference renders the untouched classic page.
+
+### Customizable Cockpit (main v0.33.214+ / Lite v0.5.61+)
+
+`public/admin/cockpit.html` is a tile grid built from the user's saved layout. **Catalog:** `public/admin/cockpit-tiles.js` (`window.SPTiles`) defines every tile once: kinds `switch`, `seg`, `select`, `step`, `action` (tap, then "Tap again to confirm" within 4s), `status`, `now` (current song + ring), `board` (`live` standings, `queue` with remove, `songs` show/hide). Groups: Show control, Safeguards, Songs & categories, Viewer page, Status. Song categories become tiles automatically (`cat:<name>`). Every setting a tile changes is already on the admin `PUT /config` allow-list — tiles never reach anything the admin can't.
+
+- **Layout** per user: `users.cockpit_layout` (JSON `[{id,size}]`, size 1/2/4 = small/wide/full row; NULL = `SPTiles.DEFAULT_LAYOUT`), on `GET /me` as `cockpitLayout`, saved by `PUT /me/cockpit-layout {layout}` (debounced 400ms on every edit; `layout: null` = reset). The server checks shape only (max 40, unique, id pattern, size) so the catalog lives in one place; unknown ids are skipped (shown only in edit mode as "No longer available", removable).
+- **Edit mode** ("Edit layout", or `cockpit.html?edit=1` from Settings → Cockpit): a catalog drawer (+ Add, drag onto the grid) and a per-tile edit strip (‹ › move, S/W/L size, × remove) on its own row above the label. HTML5 drag-and-drop for mouse; the buttons cover touch. Tile controls are inert while editing.
+- **No overflow:** rows are `grid-auto-rows: minmax(132px, auto)` and labels wrap (`overflow-wrap: anywhere`), so long labels grow the tile instead of pushing controls out (the mockup's fixed rows broke on the bottom row). 2 columns below 700px; catalog moves under the grid below 1100px.
+- **Settings → Cockpit** sub-page explains it with Customize / Open buttons.
+- Tested end to end against a live server (both repos): default layout, a switch tile changing the real setting, add/resize/move/remove, save to account, reload restores, server rejects bad size/id/41 tiles, reset clears.
 
 ## Open items / tech debt
 

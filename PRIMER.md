@@ -223,7 +223,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.58, September 2026)
+## Recent state (as of v0.5.59, September 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -258,6 +258,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.56 | **Mirror of main v0.33.207 — song progress bar sits on the player bar, themed.** Default position "On the player bar": top edge of the now-playing player bar while it's shown, in its theme color; bottom edge of the screen while it's hidden. "Top of the screen" remains. Existing 0.5.55 settings move to the new default. `showBar`/`hideBar`/`applyDecoration` now dispatch `showpilot:player-mode` / `showpilot:player-theme`. Cache-buster `rf-compat.js?v=80`. |
 | 0.5.57 | **Mirror of main v0.33.208 + v0.33.209: full admin redesign (new layout = the whole admin restyled, sidebar with every section and Settings page, new dashboard) with a per-user way back to classic, plus Cockpit tablet mode.** Server changes from main applied cleanly; the admin page edits were applied by anchor (header context differs). Also fixes a Lite-only bug: `updateRaceDurationVisibility()` was called by loadConfig() and the Race settings but never defined, so every settings load threw a ReferenceError (ported from main). |
 | 0.5.58 | **Mirror of main v0.33.210: old "Powered by OpenFalcon" footer on the default viewer page.** Startup cleanup in `lib/db.js` replaces the exact phrase in built-in templates (`html` + `draft_html`) and renames "Default (OpenFalcon)" to "Default (ShowPilot)"; user-created templates untouched; no-op once applied. Also: `LICENSE` copyright holder renamed to "ShowPilot Contributors" (MIT terms unchanged). Also: **bcrypt 5 -> 6** (removes `@mapbox/node-pre-gyp` and its vulnerable `tar`); Lite has no lockfile, and a fresh resolution audits 3 -> 0. Same bcrypt API and hash format as main, where v5 -> v6 sign-in compatibility was tested end to end. |
+| 0.5.59 | **Mirror of main v0.33.211: new-layout fixes.** Wide tables (e.g. Sequences) were cut off on the right with no way to scroll: `ui-new.css` gave tables `overflow: hidden` and kept the classic 1600px content cap. Now cards scroll horizontally (`overflow-x: auto`), tables no longer clip, and content uses the full width beside the rail. The page title in the top bar is styled explicitly (color/display/visibility) after a report that it was missing in a real browser (not reproducible in jsdom). The address bar now follows navigation (`?section=<tab>`, via `history.replaceState`) so a refresh stays on the same section; syncing starts only after setup so an incoming `?section=` link isn't erased (caught in testing). The menu rail also collapses as soon as the mouse leaves it: it used to stay expanded after a click (the clicked button kept focus under `:focus-within`). Expansion on focus is now keyboard-only (`:has(:focus-visible)`, in separate rules so browsers without `:has()` keep hover), and mouse clicks release focus. |
 
 ---
 

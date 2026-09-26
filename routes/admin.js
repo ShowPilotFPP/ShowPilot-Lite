@@ -228,6 +228,10 @@ router.put('/config', requireAdmin, (req, res) => {
     // (config.sequence_categories) is managed via /api/admin/categories.
     'viewer_show_categories',
     'uncategorized_label',
+    'viewer_progress_bar',
+    'viewer_progress_bar_position',
+    'viewer_progress_bar_show_time',
+    'viewer_progress_bar_color',
     // Viewer URL for QR code generation (v0.5.35+)
     'viewer_url',
     // Misc

@@ -16,10 +16,18 @@
 | Now-playing display | ✅ (with optional player controls) | ✅ (display-only bar, auto-shows when playing) |
 | Backup / restore | ✅ | ✅ |
 | Plugin sync (sequences, status) | ✅ | ✅ |
-| Cover art (Spotify) | ✅ | ✅ |
+| Cover art (MusicBrainz / iTunes) | ✅ | ✅ |
+| Song progress bar on the viewer page | ✅ | ✅ |
+| Redesigned admin + Cockpit tablet mode | ✅ | ✅ |
+| Public access via Cloudflare Tunnel | ✅ | ✅ |
 | Footprint on FPP's SD card | n/a (runs elsewhere) | Tiny — no audio cache, no audio bytes |
 
 If you need HTTP audio for viewers (cars without FM, etc.), use the full [ShowPilot](https://github.com/ShowPilotFPP/ShowPilot) on a separate host. If your audio reaches viewers another way, Lite gives you everything else without putting audio I/O on FPP's SD card.
+
+## Requirements
+
+- **FPP 8.0 or newer** on the Pi / BeagleBone that will run Lite
+- Internet access during install (Node.js and dependencies are downloaded)
 
 ## Install
 
@@ -34,8 +42,8 @@ ShowPilot-Lite installs as an FPP plugin. From FPP's web UI:
    - Installs Node 22 from NodeSource if not already present
    - Compiles native dependencies (`better-sqlite3`)
    - Sets up a data directory at `/home/fpp/media/plugindata/ShowPilot-Lite/` (backed up by FPP's own backup feature)
-   - Drops a `systemd` unit and starts the service on port 3100
-4. After install completes, click **Restart FPPD** when prompted, then look for the **ShowPilot-Lite** entry under FPP's **Content Setup** menu — it opens the admin UI in a new tab.
+   - Drops a `systemd` unit and starts the service on port 3100 (plus a small helper service used for the optional Cloudflare Tunnel)
+4. After install completes, restart FPPD if FPP prompts you to, then choose **ShowPilot-Lite Admin** under FPP's **Content Setup** menu to open the admin.
 5. First login: `admin` / `admin`. You'll be prompted to set a password immediately.
 
 ### Manual install (for development / non-plugin-manager use)

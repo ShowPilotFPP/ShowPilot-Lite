@@ -223,7 +223,7 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.66, September 2026)
+## Recent state (as of v0.5.67, September 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -266,6 +266,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.64 | **Mirror of main v0.33.222:** **A refresh lands on the same admin page, including sub-pages, in both layouts.** The address now carries the section and sub-page (`?section=settings&sub=audio`). `index.html`'s `restoreSectionFromUrl()` runs after sign-in on both login paths: it opens what the address names (only if that section / sub-page exists, else ignored), then wraps `switchMainTab()` / `switchTab()` so every move rewrites the address via `history.replaceState` (`writeAdminUrl()`; Dashboard clears both parameters). Replaces the new layout's own section-only address code in `ui-new.js` (removed), and adds it to the classic layout, which previously never updated the address. Tested with the real admin against a live server in both layouts: open by address, Settings → Voting, Sequences, Dashboard, and refresh on the Voting address. |
 | 0.5.65 | **Mirror of main v0.33.223:** **Duplicating a template keeps its Visual Designer mode** (community PR #23). `POST /templates/:id/duplicate` copied only `name` and `html`, so a copy of a Settings- or Blocks-mode template reopened in Code mode and lost its block layout. It now also copies `mode`, `settings_json`, `blocks_json` and `favicon_url`; the copy still starts inactive, unlocked, non-builtin and with no draft (the draft, lock and built-in seed fingerprint are deliberately not copied). Tested against a live server: a locked Blocks-mode template with settings, favicon and an unsaved draft duplicates with mode/blocks/settings/favicon kept and active/locked/builtin/draft cleared. |
 | 0.5.66 | **Mirror of main v0.33.224:** player decorations redesigned and six new themes (see "Player decorations"). Cache-buster `rf-compat.js?v=81`. |
+| 0.5.67 | **Mirror of main v0.33.227 (community PR #25):** tapping a song's vote count casts the vote too. In Voting mode the `.cell-vote` count cell (sibling of the `.cell-vote-playlist` song cell) had no handler; both renderers (`renderPlaylistGrid()` in `lib/viewer-renderer.js`, `renderRowsForMode()` in `rf-compat.js`) now give it the same `ShowPilotVote` onclick, deliberately without `data-seq` (song-cell lookups and tiebreak marking use it). Compat reset adds `.cell-vote[onclick] { cursor: pointer; }`. Cache-buster `rf-compat.js?v=82`. |
 
 ---
 

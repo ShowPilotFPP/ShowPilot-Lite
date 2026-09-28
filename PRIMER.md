@@ -223,7 +223,18 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ---
 
-## Recent state (as of v0.5.67, September 2026)
+## GitHub automation: Claude + ShipPilot (from v0.5.68)
+
+Contributions are prepared by Claude inside GitHub Actions and shipped through ShipPilot when the maintainer approves. Files: `CLAUDE.md` (house rules Claude follows), `.github/workflows/claude.yml`, `.github/workflows/shippilot-release.yml`.
+
+- **Who triggers it:** an issue or pull request opened by the owner, a collaborator, or anyone in the organization variable `CLAUDE_TRUSTED_USERS` (comma-separated GitHub logins) runs Claude automatically; for anyone else, nothing runs until a trusted person comments `@claude`. Bots and Claude's own `claude/*` PRs never trigger it.
+- **What Claude does:** reviews, applies fixes and the release rules in `CLAUDE.md` (version, cache-busters, primer row, co-author credit) on a `claude/pr-<N>` / `claude/issue-<N>` branch and opens a release PR (title `vX.Y.Z — summary`, plain-English changelog, `Source: #N`, `Co-authored-by:` lines). It never pushes to `main`/`beta`, runs only read/edit, `node --check`, git-branch and `gh pr/issue` commands (no project code, no `npm install`), and never edits `.github/`. Runs are capped (60 turns, 30 minutes) and queued per issue/PR.
+- **Mirrors from ShowPilot:** ShowPilot's workflow starts this repo's `claude.yml` (`mirror` job, `workflow_dispatch` with `source_branch`, `source_pr`, `release_pr`); Claude reads the ShowPilot branch read-only, applies the equivalent non-audio change here, and opens a `claude/mirror-showpilot-pr-<N>` release PR.
+- **Shipping:** approving a release PR from a `claude/*` branch runs `shippilot-release.yml`: it builds the tarball from the PR (commit message = PR title + body), uploads it to ShipPilot with an API token, waits for auto-deploys (failing the job if one fails), then closes the release PR (deleting its branch) and the source PR or issue with a thank-you. The same workflow can be run by hand from the Actions tab on any branch other than the target.
+- **Settings it needs (GitHub, not files):** Actions "Read and write permissions" + "Allow GitHub Actions to create and approve pull requests" (org and repo); secrets `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, uses the maintainer's Claude subscription), `SHIPPILOT_URL`, `SHIPPILOT_TOKEN` (a ShipPilot API token limited to this repo); variable `CLAUDE_TRUSTED_USERS`.
+- **Tested before release:** the ship workflow's real steps against a running ShipPilot with stand-in repos (approval ships to main with the PR's credit in the real commit, to beta untagged, Lite from an issue; the release and source items are closed; guards stop wrong-channel versions and runs from the target branch; a token can't ship another repo; deploy waits report success and failure). Claude's own run inside GitHub is exercised by the first real issue/PR.
+
+## Recent state (as of v0.5.68, September 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -267,6 +278,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.65 | **Mirror of main v0.33.223:** **Duplicating a template keeps its Visual Designer mode** (community PR #23). `POST /templates/:id/duplicate` copied only `name` and `html`, so a copy of a Settings- or Blocks-mode template reopened in Code mode and lost its block layout. It now also copies `mode`, `settings_json`, `blocks_json` and `favicon_url`; the copy still starts inactive, unlocked, non-builtin and with no draft (the draft, lock and built-in seed fingerprint are deliberately not copied). Tested against a live server: a locked Blocks-mode template with settings, favicon and an unsaved draft duplicates with mode/blocks/settings/favicon kept and active/locked/builtin/draft cleared. |
 | 0.5.66 | **Mirror of main v0.33.224:** player decorations redesigned and six new themes (see "Player decorations"). Cache-buster `rf-compat.js?v=81`. |
 | 0.5.67 | **Mirror of main v0.33.227 (community PR #25):** tapping a song's vote count casts the vote too. In Voting mode the `.cell-vote` count cell (sibling of the `.cell-vote-playlist` song cell) had no handler; both renderers (`renderPlaylistGrid()` in `lib/viewer-renderer.js`, `renderRowsForMode()` in `rf-compat.js`) now give it the same `ShowPilotVote` onclick, deliberately without `data-seq` (song-cell lookups and tiebreak marking use it). Compat reset adds `.cell-vote[onclick] { cursor: pointer; }`. Cache-buster `rf-compat.js?v=82`. |
+| 0.5.68 | **GitHub automation (Claude + ShipPilot)**, same as main v0.33.228: adds `CLAUDE.md`, `.github/workflows/claude.yml` (including the `mirror` job for ShowPilot changes) and ship-on-approval in `.github/workflows/shippilot-release.yml` (see "GitHub automation: Claude + ShipPilot"). No app changes; cache-buster unchanged (`rf-compat.js?v=82`). |
 
 ---
 

@@ -6,7 +6,7 @@
 #
 # Secrets (Settings -> Secrets and variables -> Actions):
 #   SHIPPILOT_URL    the address ShipPilot opens at in a browser, e.g. https://example.com/push
-#   SHIPPILOT_TOKEN  a ShipPilot API token limited to showpilot-plugin
+#   SHIPPILOT_TOKEN  a ShipPilot API token limited to showpilot-lite
 
 name: Ship via ShipPilot
 
@@ -29,10 +29,9 @@ jobs:
       - name: Work out the target and version
         run: |
           set -euo pipefail
-          REPO_SLUG=showpilot-plugin; TARGET_BRANCH=main; WITH_TAG=true
-          # The plugin keeps its version in version.php: $PLUGIN_VERSION = "X.Y.Z";
-          VERSION=$(sed -n 's/^[[:space:]]*\$PLUGIN_VERSION[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' version.php | head -1)
-          if [ -z "$VERSION" ]; then echo "::error::Could not read \$PLUGIN_VERSION from version.php"; exit 1; fi
+          REPO_SLUG=showpilot-lite; TARGET_BRANCH=main; WITH_TAG=true
+          VERSION=$(node -p "require('./package.json').version")
+          case "$VERSION" in *-*) echo "::error::$VERSION is a pre-release version; bump to a stable version."; exit 1 ;; esac
           if [ "${GITHUB_REF_NAME}" = "$TARGET_BRANCH" ]; then
             echo "::error::Run this on the branch you want to ship (e.g. a PR branch), not $TARGET_BRANCH."
             exit 1

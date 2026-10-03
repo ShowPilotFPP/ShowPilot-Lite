@@ -562,6 +562,67 @@
   window.request = window.ShowPilotRequest;
 
   // ======= Live state refresh =======
+  // ---- Live mode switching into/out of Race mode (v0.33.231+) ----
+  // The server builds the page differently in Race mode: it blanks every
+  // {PLAYLISTS} and injects #showpilot-race-grid plus its stylesheet. So a
+  // live switch into or out of Race mode fetches a fresh copy of the page
+  // and swaps in just those parts (no reload, so phone audio keeps playing).
+  let _pageIsRace = !!document.getElementById('showpilot-race-grid');
+  let _swapInFlight = null;
+  function onModeChanged(mode) {
+    if (mode && (mode === 'RACE') !== _pageIsRace) {
+      _swapInFlight = swapModeMarkup().catch(() => {}).then(() => { _swapInFlight = null; refreshState(); });
+      return;
+    }
+    refreshState();
+  }
+  async function swapModeMarkup() {
+    const res = await fetch(location.pathname + location.search, { cache: 'no-store', credentials: 'same-origin' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    // 1) The song lists: each mode container's contents, in page order.
+    //    (The access-code and after-hours blocks are left alone.)
+    const pick = d => Array.from(d.querySelectorAll('[data-showpilot-container]'))
+      .filter(el => !/^(locationcode|afterhours)$/.test(el.getAttribute('data-showpilot-container')));
+    const cur = pick(document), next = pick(doc);
+    if (cur.length === next.length) cur.forEach((el, i) => { el.innerHTML = next[i].innerHTML; });
+    // 2) The race grid: remove, replace or insert where the server puts it.
+    const oldGrid = document.getElementById('showpilot-race-grid');
+    const newGrid = doc.getElementById('showpilot-race-grid');
+    if (oldGrid && !newGrid) oldGrid.remove();
+    if (newGrid) {
+      const g = document.importNode(newGrid, true);
+      if (oldGrid) oldGrid.replaceWith(g);
+      else {
+        const inWrapper = newGrid.parentElement && /\bwrapper\b/.test(newGrid.parentElement.className || '');
+        const wrapper = inWrapper && document.querySelector('.wrapper');
+        (wrapper || document.body).appendChild(g);
+      }
+    }
+    // 3) The race stylesheet.
+    const oldCss = document.getElementById('showpilot-race-ui');
+    const newCss = doc.getElementById('showpilot-race-ui');
+    if (oldCss && !newCss) oldCss.remove();
+    if (newCss && !oldCss) document.head.appendChild(document.importNode(newCss, true));
+    _pageIsRace = !!document.getElementById('showpilot-race-grid');
+  }
+  // ---- A different template went live: reload onto it (v0.33.231+) ----
+  // Staggered by a moment so a crowd doesn't reload in the same instant.
+  // Someone listening on their phone isn't cut off: we wait (up to 3 min)
+  // for them to close the player. Background tabs reload right away.
+  let _templateReloadPending = false;
+  function reloadForNewTemplate() {
+    if (_templateReloadPending) return;
+    _templateReloadPending = true;
+    const started = Date.now();
+    const go = () => setTimeout(() => location.reload(), document.hidden ? 0 : Math.random() * 2500);
+    (function wait() {
+      const listening = typeof window.__spListening === 'function' && window.__spListening();
+      if (!listening || document.hidden || Date.now() - started > 180000) return go();
+      setTimeout(wait, 2000);
+    })();
+  }
+
   async function refreshState() {
     try {
       const sentAt = Date.now();
@@ -813,6 +874,11 @@
         if (el.style) el.style.display = 'none';
       }
     }
+    // Mode changed but the page still has the other layout (e.g. noticed by
+    // polling rather than the socket): swap the Race-mode markup in or out.
+    if (data.viewerControlMode && (data.viewerControlMode === 'RACE') !== _pageIsRace && !_swapInFlight) {
+      _swapInFlight = swapModeMarkup().catch(() => {}).then(() => { _swapInFlight = null; refreshState(); });
+    }
     document.querySelectorAll('[data-showpilot-container="jukebox"], [data-openfalcon-container="jukebox"]').forEach(el => {
       setVisible(el, data.viewerControlMode === 'JUKEBOX');
     });
@@ -866,6 +932,183 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
   }
+  // ============================================================
+  // Race mode UI (ported to Lite in v0.5.70; was missing since v0.5.37)
+  // ============================================================
+  let _raceTimerInterval = null;
+  let _lastShownRaceWinner = null; // track which winner we've already shown the overlay for
+
+  function buildRaceBars(tapCounts) {
+    if (!tapCounts || !tapCounts.length) return {};
+    const maxTaps = tapCounts[0].count || 1;
+    const bars = {};
+    tapCounts.forEach(r => { bars[r.sequence_name] = Math.round((r.count / maxTaps) * 100); });
+    return bars;
+  }
+
+  function applyRaceTapUpdate(data) {
+    if (!data) return;
+    const { counts, bars, leadingSequence } = data;
+    if (!counts) return;
+    counts.forEach(r => {
+      const countEl = document.querySelector('[data-race-count="' + CSS.escape(r.sequence_name) + '"]');
+      if (countEl) {
+        const old = parseInt(countEl.textContent, 10) || 0;
+        countEl.textContent = String(r.count);
+        if (r.count > old) {
+          countEl.classList.remove('race-bump');
+          void countEl.offsetWidth;
+          countEl.classList.add('race-bump');
+          setTimeout(() => countEl.classList.remove('race-bump'), 300);
+        }
+      }
+      if (bars) {
+        const barEl = document.querySelector('[data-race-bar="' + CSS.escape(r.sequence_name) + '"]');
+        if (barEl) barEl.style.width = (bars[r.sequence_name] || 0) + '%';
+      }
+    });
+    document.querySelectorAll('.race-row').forEach(row => {
+      const seq = row.getAttribute('data-race-seq');
+      row.classList.toggle('race-leading', seq === leadingSequence);
+    });
+  }
+
+  // Track the endsAt value the timer was last started with so repeated
+  // state polls don't needlessly restart a running countdown.
+  let _raceTimerEndsAt = null;
+
+  function updateRaceTimer(endsAt) {
+    // Don't restart an already-running timer for the same race
+    if (endsAt && endsAt === _raceTimerEndsAt && _raceTimerInterval) return;
+    if (_raceTimerInterval) { clearInterval(_raceTimerInterval); _raceTimerInterval = null; }
+    _raceTimerEndsAt = endsAt || null;
+
+    // Prefer the injected race grid wrapper; fall back to the first race-row's parent
+    const container = document.getElementById('showpilot-race-grid') ||
+                      (document.querySelector('.race-row') && document.querySelector('.race-row').parentElement);
+    if (!container) return;
+
+    // Create timer bar and countdown once; leave them alone on subsequent calls
+    let timerBar = document.getElementById('showpilot-race-timer-bar');
+    let countdownEl = document.getElementById('showpilot-race-countdown');
+    if (!timerBar) {
+      timerBar = document.createElement('div');
+      timerBar.id = 'showpilot-race-timer-bar';
+      // Insert before first child so it appears above the songs
+      container.insertBefore(timerBar, container.firstChild);
+    }
+    if (!countdownEl) {
+      countdownEl = document.createElement('div');
+      countdownEl.id = 'showpilot-race-countdown';
+      timerBar.insertAdjacentElement('afterend', countdownEl);
+    }
+    if (!endsAt) {
+      timerBar.style.width = '100%';
+      countdownEl.textContent = 'Race ends with this song';
+      return;
+    }
+    const endMs = new Date(endsAt).getTime();
+    const boot = window.__SHOWPILOT__ || {};
+    const totalMs = (boot.raceDurationSeconds || 60) * 1000;
+    function tick() {
+      const remaining = Math.max(0, endMs - Date.now());
+      const pct = Math.min(100, Math.round((remaining / totalMs) * 100));
+      timerBar.style.width = pct + '%';
+      if (remaining <= 10000) timerBar.style.background = '#ff3a4f';
+      const secs = Math.ceil(remaining / 1000);
+      countdownEl.textContent = remaining > 0 ? secs + 's remaining' : 'Race over!';
+      if (remaining <= 0 && _raceTimerInterval) {
+        clearInterval(_raceTimerInterval);
+        _raceTimerInterval = null;
+        // Timer expired client-side — poll state immediately so we pick up
+        // the winner the server resolves via its own setTimeout.
+        setTimeout(refreshState, 500);
+      }
+    }
+    tick();
+    _raceTimerInterval = setInterval(tick, 1000);
+  }
+
+  function initRaceUI(data) {
+    const overlay = document.getElementById('showpilot-race-winner-overlay');
+    if (overlay) { overlay.classList.remove('active'); overlay.innerHTML = ''; }
+    _lastShownRaceWinner = null;
+    _raceTimerEndsAt = null; // force timer restart for new race
+    document.querySelectorAll('.race-tap-btn').forEach(b => { b.disabled = false; });
+    document.querySelectorAll('[data-race-bar]').forEach(el => { el.style.width = '0%'; });
+    document.querySelectorAll('[data-race-count]').forEach(el => { el.textContent = '0'; });
+    document.querySelectorAll('.race-row').forEach(r => r.classList.remove('race-leading'));
+    updateRaceTimer(data && data.endsAt ? data.endsAt : null);
+  }
+
+  function showRaceWinner(data) {
+    document.querySelectorAll('.race-tap-btn').forEach(b => { b.disabled = true; });
+    if (_raceTimerInterval) { clearInterval(_raceTimerInterval); _raceTimerInterval = null; }
+    _lastShownRaceWinner = data.sequenceName || null; // mark as shown so state poll doesn't re-fire
+    const overlay = document.getElementById('showpilot-race-winner-overlay');
+    if (!overlay) return;
+    const name   = escapeHtml(data.displayName || data.sequenceName || 'Unknown');
+    const artist = data.artist ? '<div class="race-winner-artist">' + escapeHtml(data.artist) + '</div>' : '';
+    const taps   = data.tapCount != null ? '<div class="race-winner-taps">\uD83C\uDFC6 ' + data.tapCount + ' taps</div>' : '';
+    overlay.innerHTML =
+      '<div class="race-winner-flag">\uD83C\uDFC1</div>' +
+      '<div class="race-winner-label">' + _pt('Winner!') + '</div>' +
+      '<div class="race-winner-song">' + name + '</div>' +
+      artist + taps +
+      '<div style="color:rgba(255,255,255,0.5);font-size:0.8em">Playing next \u2013 tap to dismiss</div>';
+    overlay.classList.add('active');
+    launchRaceConfetti();
+    overlay.addEventListener('click', () => overlay.classList.remove('active'), { once: true });
+  }
+
+  function launchRaceConfetti() {
+    const colors = ['#ffd700','#ff6b35','#ff3a4f','#4fc3f7','#81c784','#ce93d8','#fff'];
+    for (let i = 0; i < 80; i++) {
+      const el = document.createElement('div');
+      el.className = 'race-confetti-piece';
+      const color    = colors[Math.floor(Math.random() * colors.length)];
+      const x        = Math.random() * 100;
+      const duration = 1.5 + Math.random() * 2;
+      const delay    = Math.random() * 0.8;
+      const size     = 6 + Math.floor(Math.random() * 10);
+      el.style.cssText = 'left:' + x + 'vw;top:-20px;background:' + color +
+        ';width:' + size + 'px;height:' + size + 'px' +
+        ';animation-duration:' + duration + 's;animation-delay:' + delay + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), (duration + delay + 0.2) * 1000);
+    }
+  }
+
+  // Global tap handler called from race row buttons
+  window.ShowPilotRaceTap = async function(sequenceName) {
+    try {
+      await fetch('/api/race/tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ sequenceName }),
+      });
+      // Server emits raceTapUpdate via socket — UI updates from there
+    } catch {}
+  };
+
+  // Initialize race UI on page load if mode is already RACE.
+  // Runs after DOMContentLoaded so #showpilot-race-grid is in the DOM.
+  // We intentionally do NOT show the winner overlay on page load — it is a
+  // real-time socket event, not persistent state to re-show on refresh.
+  document.addEventListener('DOMContentLoaded', function() {
+    const boot = window.__SHOWPILOT__ || {};
+    if (boot.mode === 'RACE') {
+      if (boot.raceActive && !boot.raceWinner) {
+        updateRaceTimer(boot.raceEndsAt || null);
+      } else if (boot.raceWinner) {
+        document.querySelectorAll('.race-tap-btn').forEach(b => { b.disabled = true; });
+        const countdownEl = document.getElementById('showpilot-race-countdown');
+        if (countdownEl) countdownEl.textContent = 'Race over — next song coming up!';
+      }
+    }
+  });
+
 
   // Heartbeat (for active viewer count)
   setInterval(() => {
@@ -1278,7 +1521,10 @@
       // server-side in routes/plugin.js. Without this, viewers wait up
       // to 3s for the next poll to see the after-hours block appear or
       // the active grid swap. With it, propagation is instant.
-      socket.on('viewerModeChanged', () => refreshState());
+      socket.on('viewerModeChanged', (data) => onModeChanged(data && data.mode));
+      // A different viewer template was activated (by hand or on a schedule):
+      // reload onto it (v0.5.70+).
+      socket.on('viewerTemplateChanged', () => reloadForNewTemplate());
       // ---- Tiebreak events (v0.24.0+) ----
       socket.on('tiebreakStarted', (data) => {
         showTiebreakUI(data);

@@ -132,6 +132,11 @@ app.use('/api/admin', adminRouter);
 // is applied at the mount point, same pattern as backup.
 app.use('/api/admin/cloudflared', adminRouter.requireAdmin, require('./routes/cloudflared'));
 
+// Tools → Audio Normalizer (main v0.33.232 / Lite v0.5.71). Admin-only,
+// sibling mount like cloudflared. Upload bodies are streamed to disk by
+// the route itself (the global json parser ignores non-JSON bodies).
+app.use('/api/admin/tools/normalize', adminRouter.requireAdmin, require('./routes/normalize'));
+
 // Public viewer API
 app.use('/api', require('./routes/viewer'));
 

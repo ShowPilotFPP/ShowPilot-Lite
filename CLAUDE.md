@@ -20,7 +20,7 @@ You run inside GitHub Actions for the maintainer. Contributions arrive as issues
 
 ## ShowPilot-Lite specifics
 
-- Lite is ShowPilot without the audio features (no phone audio, audio cache or mp3 handling). It shares most viewer and admin code.
+- Lite is ShowPilot without the audio features (no phone audio, audio cache or mp3 handling). It shares most viewer and admin code. Exception: the **Tools → Audio Normalizer** (`lib/audio-normalizer.js`, `routes/normalize.js`, `public/admin/audio-normalizer.js`) is in Lite too and its files are identical to main's — mirror changes to it.
 - **Version:** `package.json` `version` and the `<span class="app-version">vX.Y.Z</span>` label in `public/admin/index.html` must match; stable releases bump the patch number.
 - **Player cache-buster:** any change to `public/rf-compat.js` must raise `rf-compat.js?v=<n>` in `lib/viewer-renderer.js` by one.
 - `PRIMER.md`: add a `| X.Y.Z | ... |` row after the last row of the version table, and update the `## Recent state (as of vX.Y.Z, <Month Year>)` heading.

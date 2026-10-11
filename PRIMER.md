@@ -225,6 +225,8 @@ Identical to the ShowPilot main and ShipPilot primers. Non-negotiable:
 
 ## Architectural decisions worth knowing
 
+**Sync removes dropped sequences (v0.33.236 / Lite v0.5.75):** `POST /api/plugin/sync-sequences` upserts the list, then deletes every sequence whose `name` isn't in it, so ShowPilot matches the synced playlist (before, rows were kept forever and a song dropped from the FPP playlist stayed on the viewer page). Dependent `jukebox_queue` and `votes` rows go first (foreign keys), same as the admin's single delete; that also drops request history for that song in the stats. An empty `sequences` list never removes anything (an unreadable playlist is likelier than an empty show). Custom names/art/category of a removed song are lost; re-adding it starts fresh, so save a sequence snapshot first if a song is only out for a while. Response and the `sequencesSynced` socket event carry `removed`. Both senders (FPP plugin and ShowPilot Player) always push the full playlist, so a partial list can't wipe songs.
+
 **Publisher identity for all ShowPilot systems is "ShowPilot Project."** Not the operator's name, not <show-slug>. Used in `pluginInfo.json` `author` field, and going forward should be the publisher across all four repos (ShowPilot, ShowPilot-Lite, ShowPilot-plugin, ShipPilot) when a publisher rename pass happens. That broader rename hasn't happened yet — Lite v0.2.0 was the first place it landed.
 
 **The data directory is a symlink, not a config setting.** Everything inside Lite's source tree references `./data/` as a relative path (especially `cover-art.js` which uses `path.join(__dirname, '..', 'data', 'covers')`). Rather than make all those callsites configurable, `fpp_install.sh` symlinks `./data/` to `/home/fpp/media/plugindata/ShowPilot-Lite/`. This keeps the application code unchanged from main while putting actual data where FPP's backup feature captures it. Don't try to "clean this up" by adding a `dataDir` config — it'll require touching every callsite that joins to `data/`.
@@ -322,6 +324,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.72 | **Mirror of ShowPilot v0.33.233** — Audio Normalizer length check counts decoded samples instead of trusting ffprobe's duration (false "⚠ +1521 ms" on a VBR MP3 without a Xing header). |
 | 0.5.73 | **Mirror of ShowPilot v0.33.234** — Audio Normalizer song picker: no more jumping/wrong picks when ticking songs, new "Select all" checkbox, cache-buster `audio-normalizer.js?v=2`. |
 | 0.5.74 | **Mirror of ShowPilot v0.33.235** — Audio Normalizer names the connected show player: "ShowPilot Player" when its heartbeat version starts with `player-`, otherwise "FPP" (buttons, labels, errors, hand-upload note, level hint). Same FPP file API either way. Cache-buster `audio-normalizer.js?v=3`. |
+| 0.5.75 | **Mirror of ShowPilot v0.33.236** — playlist sync removes sequences no longer in the synced playlist (pending requests/votes for them first); an empty list removes nothing; response includes `removed`. |
 
 ---
 

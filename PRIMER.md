@@ -102,7 +102,8 @@ Lite runs on **FPP itself**, as an FPP plugin. There's only one environment.
 
 ### CI/CD
 - GitHub: `github.com/ShowPilotFPP/ShowPilot-Lite`
-- No GitHub Actions. Releases are manual via tarball drop into ShipPilot.
+- GitHub Actions: `claude.yml` and `shippilot-release.yml` (see "GitHub automation"); no Docker workflow. Tarball drops into ShipPilot still work as before.
+- **Self-hosted build runner (v0.5.77+, mirrors main v0.33.238):** the ship job runs on the maintainer's self-hosted arm64 runner (labels `self-hosted, linux, arm64, showpilot`). Repo variable `SPP_RUNNER` = `github` switches it back to GitHub-hosted runners; unset, jobs queue while the machine is offline. `claude.yml` stays GitHub-hosted on purpose (public issue/PR text drives it). Setup script and docs: ShipPilot repo, `docs/self-hosted-runner/`.
 - Releases push to GitHub, but the FPP host doesn't auto-update. the operator manually `git pull` and re-runs `fpp_install.sh` when there's a fix that requires it (e.g. systemd unit changes). Plain code changes only need `git pull` + `systemctl restart showpilot-lite`.
 
 ---
@@ -328,6 +329,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.74 | **Mirror of ShowPilot v0.33.235** — Audio Normalizer names the connected show player: "ShowPilot Player" when its heartbeat version starts with `player-`, otherwise "FPP" (buttons, labels, errors, hand-upload note, level hint). Same FPP file API either way. Cache-buster `audio-normalizer.js?v=3`. |
 | 0.5.75 | **Mirror of ShowPilot v0.33.236** — playlist sync removes sequences no longer in the synced playlist (pending requests/votes for them first); an empty list removes nothing; response includes `removed`. |
 | 0.5.76 | **Mirror of ShowPilot v0.33.237** — Audio Normalizer: "Match songs by show speakers" (default; median short-term loudness with the deep bass left out, capped ±4 dB from plain LUFS) or standard LUFS, per-song **Adjust** (±6 dB by hand), themed confirmations instead of browser pop-ups. Cache-buster `audio-normalizer.js?v=4`. Tested on a live Lite server (speaker match and trim). |
+| 0.5.77 | **Mirror of ShowPilot v0.33.238** — `shippilot-release.yml` ship job runs on the self-hosted runner (`SPP_RUNNER=github` falls back to GitHub-hosted). Workflow only; no app code changes. Checked with actionlint. |
 
 ---
 

@@ -38,24 +38,27 @@ router.post('/install', async (req, res) => {
 });
 
 // Update (v0.5.78+) — upgrade the cloudflared package in place, keeping
-// the token and service. Restarts the tunnel if it was running.
-router.post('/update', async (req, res) => {
+// the token and service. Since v0.5.79 this only STARTS the update and
+// returns at once: the tunnel restart would otherwise cut off this
+// response when the page is reached through the tunnel. Poll /update-check.
+router.post('/update', (req, res) => {
   try {
-    const r = await cloudflared.update();
-    if (!r.ok) return res.status(500).json(r);
+    const r = cloudflared.startUpdate();
+    if (!r.ok) return res.status(400).json(r);
     res.json(r);
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message || 'Update failed.' });
   }
 });
 
-// Installed vs latest release — kept off /status so polling never waits
-// on GitHub.
+// Installed vs latest + background job state. Kept off /status so polling
+// never waits on GitHub. Always 200 with JSON (a 502 can be replaced by a
+// proxy's own error page).
 router.get('/update-check', async (req, res) => {
   try {
     res.json(await cloudflared.checkForUpdate());
   } catch (err) {
-    res.status(502).json({ ok: false, error: err.message || 'Update check failed.' });
+    res.json({ ok: false, error: err.message || 'Update check failed.' });
   }
 });
 

@@ -37,6 +37,28 @@ router.post('/install', async (req, res) => {
   }
 });
 
+// Update (v0.5.78+) — upgrade the cloudflared package in place, keeping
+// the token and service. Restarts the tunnel if it was running.
+router.post('/update', async (req, res) => {
+  try {
+    const r = await cloudflared.update();
+    if (!r.ok) return res.status(500).json(r);
+    res.json(r);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || 'Update failed.' });
+  }
+});
+
+// Installed vs latest release — kept off /status so polling never waits
+// on GitHub.
+router.get('/update-check', async (req, res) => {
+  try {
+    res.json(await cloudflared.checkForUpdate());
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message || 'Update check failed.' });
+  }
+});
+
 // Set token — accepts { token } and registers the service. Idempotent
 // in that calling it again with the same token is harmless (we tear
 // down + reinstall the unit).

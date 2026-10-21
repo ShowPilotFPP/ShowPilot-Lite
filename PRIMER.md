@@ -197,6 +197,15 @@ A standalone tool that makes a show's songs equally loud by changing the files, 
 
 **Tested:** against a real server and a fake FPP serving the file API: −8.6 → −14.0 and −27.3 → −14.0 LUFS; cross-correlation of every original vs fixed file = **0 samples** offset, durations identical, sample rate / mono / tags / cover art kept; skip, limiter, limiter-off, fallback and validation paths; traversal and bad extensions rejected; unauthenticated 401; send replaces the FPP file byte-for-byte and restore puts the original back; both zips verify with `unzip -t`. UI tested in jsdom against the live server (settings survive re-render, batch progress, buttons, refresh reattach, start over). Lite: same tests of status, listing and a batch on a live Lite server.
 
+## Cloudflare Tunnel: in-place cloudflared update (from v0.5.78; mirrors ShowPilot v0.33.239)
+
+Settings → Cloudflare Tunnel shows "Installed: X · Latest: Y" whenever cloudflared is installed, with an **Update** button. Previously the only way to update was Uninstall → Install, and uninstall deletes `/etc/cloudflared/token`.
+
+- `cfhelper-daemon.js`: new `update` command. The download/verify/install code from `install()` is now `downloadAndInstallDeb()` (sha256 check against GitHub's published asset digest, then `dpkg -i`), shared by both. `dpkg -i` over an existing install is an in-place upgrade and leaves our systemd unit and token file alone. If the `cloudflared` service was active it is restarted onto the new binary.
+- `lib/cloudflared.js`: `update()` (RPC, 255 s timeout) and `checkForUpdate()` (unprivileged: `cloudflared --version` + GitHub latest release tag, cached 1 h). If the helper is still running older code it answers "unknown command"; the client turns that into "restart the showpilot-lite-cfhelper service (or reboot)". `fpp_install.sh` restarts the helper on every plugin install/update, so this should only happen on hand-copied updates.
+- Routes: `POST /api/admin/cloudflared/update`, `GET /api/admin/cloudflared/update-check` (kept off `/status` so polling never waits on GitHub).
+- Main's version of this is a different implementation (standalone binary under `data/bin`, child-process supervisor) with the same routes and UI.
+
 ## "Both versions every time" — the maintenance contract
 
 This was the operator's explicit call after pushing back on a feature-flag approach. The contract:
@@ -276,7 +285,7 @@ Contributions are prepared by Claude inside GitHub Actions and shipped through S
 - **Viewers:** `rf-compat.js` reloads on `viewerTemplateChanged` (random 0–2.5 s stagger; background tabs immediately; if `window.__spListening()` reports the Listen-on-Phone player is open, it waits up to 3 minutes for it to close). Manual activation in the admin also emits it.
 - **Live Race switching:** the server renders Race mode differently (blanks every `{PLAYLISTS}`, injects `#showpilot-race-grid` inside the first `.wrapper` and `<style id="showpilot-race-ui">`). When the mode changes into or out of Race (socket `viewerModeChanged`, or noticed by the 3-second state poll), the player fetches the page and swaps the mode containers' contents (not the access-code or after-hours blocks), the race grid and the race stylesheet — no reload, so phone audio keeps playing.
 
-## Recent state (as of v0.5.70, October 2026)
+## Recent state (as of v0.5.78, October 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -330,6 +339,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.75 | **Mirror of ShowPilot v0.33.236** — playlist sync removes sequences no longer in the synced playlist (pending requests/votes for them first); an empty list removes nothing; response includes `removed`. |
 | 0.5.76 | **Mirror of ShowPilot v0.33.237** — Audio Normalizer: "Match songs by show speakers" (default; median short-term loudness with the deep bass left out, capped ±4 dB from plain LUFS) or standard LUFS, per-song **Adjust** (±6 dB by hand), themed confirmations instead of browser pop-ups. Cache-buster `audio-normalizer.js?v=4`. Tested on a live Lite server (speaker match and trim). |
 | 0.5.77 | **Mirror of ShowPilot v0.33.238** — `shippilot-release.yml` ship job runs on the self-hosted runner (`SPP_RUNNER=github` falls back to GitHub-hosted). Workflow only; no app code changes. Checked with actionlint. |
+| 0.5.78 | **Mirror of ShowPilot v0.33.239** — update cloudflared from the admin panel without losing the tunnel token (ShowPilot issue #28, @jddocea). New helper `update` command reuses the verified `.deb` install path and restarts the tunnel if it was running; installed-vs-latest check with Update button. See "Cloudflare Tunnel: in-place cloudflared update". Checked: `node --check` on all `.js` files and every inline admin `<script>` block. |
 
 ---
 

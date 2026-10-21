@@ -204,6 +204,7 @@ Settings → Cloudflare Tunnel shows "Installed: X · Latest: Y" whenever cloudf
 - `cfhelper-daemon.js`: new `update` command. The download/verify/install code from `install()` is now `downloadAndInstallDeb()` (sha256 check against GitHub's published asset digest, then `dpkg -i`), shared by both. `dpkg -i` over an existing install is an in-place upgrade and leaves our systemd unit and token file alone. If the `cloudflared` service was active it is restarted onto the new binary.
 - `lib/cloudflared.js`: `update()` (RPC, 255 s timeout) and `checkForUpdate()` (unprivileged: `cloudflared --version` + GitHub latest release tag, cached 1 h). If the helper is still running older code it answers "unknown command"; the client turns that into "restart the showpilot-lite-cfhelper service (or reboot)". `fpp_install.sh` restarts the helper on every plugin install/update, so this should only happen on hand-copied updates.
 - Routes: `POST /api/admin/cloudflared/update`, `GET /api/admin/cloudflared/update-check` (kept off `/status` so polling never waits on GitHub).
+- **Update runs in the background (main v0.33.240 / Lite v0.5.79).** The admin page usually reaches the app *through* the tunnel, and the update restarts the tunnel, which cut off the Update request itself: the first release showed "Update failed: unknown error" (a proxy error page instead of JSON) even when the update had worked, and the immediate re-check showed "Installed: unknown". Now `POST /update` only starts a job (`startUpdate()`) and returns at once; `GET /update-check` always answers 200 with JSON, always includes the installed version (a failed GitHub lookup sets `latest: null` + `latestError`), and carries `job` `{state: idle|running|done|failed, id, result}`. The page polls it every 3 s, ignoring failed requests while the tunnel restarts, for up to 4 min, then shows the result. A reloaded page picks up a still-running job. Non-JSON replies now show the HTTP status instead of "unknown error".
 - Main's version of this is a different implementation (standalone binary under `data/bin`, child-process supervisor) with the same routes and UI.
 
 ## "Both versions every time" — the maintenance contract
@@ -285,7 +286,7 @@ Contributions are prepared by Claude inside GitHub Actions and shipped through S
 - **Viewers:** `rf-compat.js` reloads on `viewerTemplateChanged` (random 0–2.5 s stagger; background tabs immediately; if `window.__spListening()` reports the Listen-on-Phone player is open, it waits up to 3 minutes for it to close). Manual activation in the admin also emits it.
 - **Live Race switching:** the server renders Race mode differently (blanks every `{PLAYLISTS}`, injects `#showpilot-race-grid` inside the first `.wrapper` and `<style id="showpilot-race-ui">`). When the mode changes into or out of Race (socket `viewerModeChanged`, or noticed by the 3-second state poll), the player fetches the page and swaps the mode containers' contents (not the access-code or after-hours blocks), the race grid and the race stylesheet — no reload, so phone audio keeps playing.
 
-## Recent state (as of v0.5.78, October 2026)
+## Recent state (as of v0.5.79, October 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -340,6 +341,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.76 | **Mirror of ShowPilot v0.33.237** — Audio Normalizer: "Match songs by show speakers" (default; median short-term loudness with the deep bass left out, capped ±4 dB from plain LUFS) or standard LUFS, per-song **Adjust** (±6 dB by hand), themed confirmations instead of browser pop-ups. Cache-buster `audio-normalizer.js?v=4`. Tested on a live Lite server (speaker match and trim). |
 | 0.5.77 | **Mirror of ShowPilot v0.33.238** — `shippilot-release.yml` ship job runs on the self-hosted runner (`SPP_RUNNER=github` falls back to GitHub-hosted). Workflow only; no app code changes. Checked with actionlint. |
 | 0.5.78 | **Mirror of ShowPilot v0.33.239** — update cloudflared from the admin panel without losing the tunnel token (ShowPilot issue #28, @jddocea). New helper `update` command reuses the verified `.deb` install path and restarts the tunnel if it was running; installed-vs-latest check with Update button. See "Cloudflare Tunnel: in-place cloudflared update". Checked: `node --check` on all `.js` files and every inline admin `<script>` block. |
+| 0.5.79 | **Mirror of ShowPilot v0.33.240** — the cloudflared Update now runs in the background so restarting the tunnel no longer cuts off the request and shows "unknown error"; the page waits for the tunnel to return, then shows the result. Checked: `node --check` on all `.js` files and every inline admin `<script>` block. |
 
 ---
 

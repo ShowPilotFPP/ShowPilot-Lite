@@ -286,7 +286,7 @@ Contributions are prepared by Claude inside GitHub Actions and shipped through S
 - **Viewers:** `rf-compat.js` reloads on `viewerTemplateChanged` (random 0–2.5 s stagger; background tabs immediately; if `window.__spListening()` reports the Listen-on-Phone player is open, it waits up to 3 minutes for it to close). Manual activation in the admin also emits it.
 - **Live Race switching:** the server renders Race mode differently (blanks every `{PLAYLISTS}`, injects `#showpilot-race-grid` inside the first `.wrapper` and `<style id="showpilot-race-ui">`). When the mode changes into or out of Race (socket `viewerModeChanged`, or noticed by the 3-second state poll), the player fetches the page and swaps the mode containers' contents (not the access-code or after-hours blocks), the race grid and the race stylesheet — no reload, so phone audio keeps playing.
 
-## Recent state (as of v0.5.79, October 2026)
+## Recent state (as of v0.5.80, October 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -342,6 +342,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.77 | **Mirror of ShowPilot v0.33.238** — `shippilot-release.yml` ship job runs on the self-hosted runner (`SPP_RUNNER=github` falls back to GitHub-hosted). Workflow only; no app code changes. Checked with actionlint. |
 | 0.5.78 | **Mirror of ShowPilot v0.33.239** — update cloudflared from the admin panel without losing the tunnel token (ShowPilot issue #28, @jddocea). New helper `update` command reuses the verified `.deb` install path and restarts the tunnel if it was running; installed-vs-latest check with Update button. See "Cloudflare Tunnel: in-place cloudflared update". Checked: `node --check` on all `.js` files and every inline admin `<script>` block. |
 | 0.5.79 | **Mirror of ShowPilot v0.33.240** — the cloudflared Update now runs in the background so restarting the tunnel no longer cuts off the request and shows "unknown error"; the page waits for the tunnel to return, then shows the result. Checked: `node --check` on all `.js` files and every inline admin `<script>` block. |
+| 0.5.80 | **Mirror of ShowPilot v0.33.241 (community PR #30, @bjhiltbrand): Stats tab — believable visitor numbers, charts follow the date range, votes are counted.** A viewer page load only counts once the page's script sends its first heartbeat (`viewer_visits.confirmed`, `confirmVisit`), so scanners, link previews and scripts that just fetch the page no longer show up as new unique visitors; unconfirmed loads are kept 30 days and reported as "left out"; older rows still count. Days use the show's time zone. The visitor charts, KPI cards and per-sequence table share the one From/To range (`/stats/audience` takes `from`/`to`); new "This season" preset. New `vote_log` table keeps every vote so voting-mode stats aren't ~0 (`votes` is cleared each round). Applied from the ShowPilot diff; only the version label and a `routes/viewer.js` import line needed hand-merging. Checked: `node --check` on all `.js` files and every inline admin `<script>` block; confirmed Lite's `template-schedule.js` exports the time-zone helpers and both viewer pages send a heartbeat on load. |
 
 ---
 

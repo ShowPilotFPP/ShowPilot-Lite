@@ -9,6 +9,8 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const { Server } = require('socket.io');
 const config = require('./lib/config-loader');
+// Keep ShowPilot's log for Settings → Debug → Server log (v0.33.249+).
+require('./lib/server-log').install(path.dirname(path.resolve(config.dbPath)), [config.showToken, config.jwtSecret]);
 const { cleanupStaleViewers } = require('./lib/db');
 // Register any pre-existing sequences.category text as categories (idempotent).
 try { require('./lib/categories').seedFromSequences(); } catch (e) { console.warn('[categories] seed failed:', e.message); }
@@ -320,6 +322,17 @@ app.get('/admin-manifest.json', (req, res) => {
   });
 });
 
+// Global CSS for viewer pages (v0.33.249+, GitHub #36). Linked by the
+// renderer with ?v=<rev>, so it can be cached for a long time.
+app.get('/viewer-global.css', (req, res) => {
+  const cfg = require('./lib/db').getConfig();
+  res.type('text/css');
+  res.set('X-Content-Type-Options', 'nosniff');
+  if (cfg.viewer_global_css_enabled === 0) { res.set('Cache-Control', 'no-store'); return res.send(''); }
+  res.set('Cache-Control', req.query.v ? 'public, max-age=31536000, immutable' : 'no-cache');
+  res.send(cfg.viewer_global_css || '');
+});
+
 app.get('/viewer-manifest.json', (req, res) => {
   const { getConfig } = require('./lib/db');
   const cfg = getConfig();
@@ -393,7 +406,7 @@ app.get('/', async (req, res) => {
     const nowPlaying = getNowPlaying();
 
     const sequences = db.prepare(`
-      SELECT id, name, display_name, artist, category, image_url,
+      SELECT id, name, display_name, artist, category, image_url, badge,
              duration_seconds, votable, jukeboxable,
              last_played_at, plays_since_hidden
       FROM sequences

@@ -8,8 +8,8 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const config = require('../lib/config-loader');
-const { db, getConfig, getNowPlaying, getActiveViewerCount, getSequenceByName, getSequenceLabel, castTiebreakVote, logVote, logVoteChange, getNextUp,
-        addRaceTap, getRaceTapCounts, resetRaceTaps, getRaceLeader, setBaselineNext, updateConfig } = require('../lib/db');
+const { db, getConfig, getNowPlaying, getActiveViewerCount, getSequenceByName, getSequenceLabel, listDisplayMode, castTiebreakVote, logVote, logVoteChange, getNextUp,
+        addRaceTap, getRaceTapCounts, resetRaceTaps, getRaceLeader, setBaselineNext , updateConfig } = require('../lib/db');
 const { bustCoverUrl } = require('../lib/cover-art');
 const categories = require('../lib/categories');
 const { progressBarConfig } = require('../lib/progress-bar');
@@ -143,6 +143,10 @@ function viewerPresenceCheck(req, cfg) {
 
 function runSafeguards(req, res, requiredMode) {
   const cfg = getConfig();
+  if (cfg.viewer_control_mode === 'LISTEN') {
+    res.status(400).json({ error: 'Requests and voting are closed for now. You can still listen along!', listenOnly: true });
+    return null;
+  }
   if (cfg.viewer_control_mode !== requiredMode) {
     res.status(400).json({ error: `${requiredMode.toLowerCase()} is not currently enabled` });
     return null;
@@ -186,7 +190,7 @@ router.get('/state', (req, res) => {
   const activeViewers = getActiveViewerCount();
 
   const allSequences = db.prepare(`
-    SELECT id, name, display_name, artist, category, image_url,
+    SELECT id, name, display_name, artist, category, image_url, badge,
            duration_seconds, votable, jukeboxable,
            last_played_at, plays_since_hidden, cooldown_minutes
     FROM sequences
@@ -229,7 +233,7 @@ router.get('/state', (req, res) => {
   // entry; everything after it is genuinely "queued behind."
   const queueAll = db.prepare(`
     SELECT sequence_name, requested_at, handed_off_at FROM jukebox_queue
-    WHERE played = 0 ORDER BY requested_at ASC
+    WHERE played = 0 ORDER BY requested_at ASC, id ASC
   `).all();
 
   // Filter out the currently-playing entry from the queue display
@@ -268,10 +272,16 @@ router.get('/state', (req, res) => {
   res.json({
     showName: cfg.show_name,
     viewerControlMode: cfg.viewer_control_mode,
+    // Song list layout to show: the mode itself, or in Listen Only the last
+    // active mode's layout (v0.33.249+).
+    listDisplayMode: listDisplayMode(cfg),
     nowPlaying: nowPlaying.sequence_name || null,
     nowPlayingDisplayName: npLabel.displayName,
+    nowPlayingArtist: nowPlaying.sequence_name ? (npLabel.artist || '') : '',
     nowPlayingImageUrl: npLabel.imageUrl ? bustCoverUrl(npLabel.imageUrl) : null,
     nextScheduledDisplayName: nextLabel.displayName,
+    nextScheduledImageUrl: nextLabel.imageUrl ? bustCoverUrl(nextLabel.imageUrl) : null,
+    nextScheduledArtist: nextUp ? (nextLabel.artist || '') : '',
     nowPlayingStartedAtIso,
     nowPlayingDurationSeconds,
     // Server clock (viewer clock-offset estimate for {NOW_PLAYING_TIMER} and
@@ -693,14 +703,16 @@ router.post('/jukebox/add', (req, res) => {
 
   const token = ensureViewerToken(req, res);
 
-  // queueSize, sequence-request-limit, and prevent-multiple-requests checks
-  // should only count *pending* queue entries (handed_off_at IS NULL).
-  // In-flight entries (handed_off_at IS NOT NULL but played=0) are already with
-  // the plugin / FPP and shouldn't count against viewers anymore.
+  // queueSize, sequence-request-limit and prevent-multiple-requests count
+  // every request that hasn't played yet. ShowPilot hands requests to the
+  // show player as soon as it asks (often seconds after the tap), and they
+  // then wait in its queue; counting only the ones not yet handed over
+  // (before v0.33.249) let the queue grow past its limit and let a viewer
+  // request again while their first song was still waiting (GitHub #37).
 
   if (cfg.jukebox_queue_depth > 0) {
     const queueSize = db.prepare(
-      `SELECT COUNT(*) AS n FROM jukebox_queue WHERE played = 0 AND handed_off_at IS NULL`
+      `SELECT COUNT(*) AS n FROM jukebox_queue WHERE played = 0`
     ).get().n;
     if (queueSize >= cfg.jukebox_queue_depth) {
       return res.status(409).json({ error: 'The queue is full. Try again later.' });
@@ -710,7 +722,7 @@ router.post('/jukebox/add', (req, res) => {
   if (cfg.jukebox_sequence_request_limit > 0) {
     const seqCount = db.prepare(
       `SELECT COUNT(*) AS n FROM jukebox_queue
-       WHERE played = 0 AND handed_off_at IS NULL AND sequence_name = ?`
+       WHERE played = 0 AND sequence_name = ?`
     ).get(seq.name).n;
     if (seqCount >= cfg.jukebox_sequence_request_limit) {
       return res.status(409).json({
@@ -723,7 +735,7 @@ router.post('/jukebox/add', (req, res) => {
     const limit = Math.max(1, parseInt(cfg.viewer_request_limit, 10) || 1);
     const existing = db.prepare(
       `SELECT COUNT(*) AS n FROM jukebox_queue
-       WHERE viewer_token = ? AND played = 0 AND handed_off_at IS NULL`
+       WHERE viewer_token = ? AND played = 0`
     ).get(token).n;
     if (existing >= limit) {
       const noun = limit === 1 ? 'request' : 'requests';
@@ -935,8 +947,9 @@ function applyModeEffects(io, mode, opts = {}) {
 function setViewerMode(io, mode, opts = {}) {
   const cfg = getConfig();
   const updates = { viewer_control_mode: mode };
-  if (mode !== 'OFF') updates.last_active_mode = mode;
-  else if (cfg.viewer_control_mode && cfg.viewer_control_mode !== 'OFF') updates.last_active_mode = cfg.viewer_control_mode;
+  const { RESTORABLE_MODES } = require('../lib/db');
+  if (RESTORABLE_MODES.includes(mode)) updates.last_active_mode = mode;
+  else if (RESTORABLE_MODES.includes(cfg.viewer_control_mode)) updates.last_active_mode = cfg.viewer_control_mode;
   updateConfig(updates);
   applyModeEffects(io, mode, opts);
 }

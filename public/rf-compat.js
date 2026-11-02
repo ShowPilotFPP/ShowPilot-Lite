@@ -157,6 +157,7 @@
   function mapErrorToId(error, data) {
     if (data && data.invalidLocationCode) return MSG_IDS.invalidLocationCode;
     const msg = (error || '').toLowerCase();
+    if (msg.includes('miles of the show')) return MSG_IDS.invalidLocation;
     if (msg.includes('access code')) return MSG_IDS.invalidLocationCode;
     if (msg.includes('location')) return MSG_IDS.invalidLocation;
     if (msg.includes('already voted')) return MSG_IDS.alreadyVoted;
@@ -361,18 +362,47 @@
   }
 
   // ======= GPS =======
+  // Plain-language help when the phone won't give a location (v0.33.249+).
+  // iPhones have a second switch most people never see: Settings → Privacy &
+  // Security → Location Services → Safari Websites. When that is "Never",
+  // Safari doesn't even ask, it just refuses. In-app browsers (Facebook,
+  // Messenger, Instagram) often refuse too.
+  const UA = navigator.userAgent || '';
+  const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+  const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|Line\/|Snapchat|TikTok/i.test(UA);
+  function locationHelpText(code) {
+    if (IN_APP) return 'This app\'s built-in browser won\'t share your location. Open this page in ' + (IS_IOS ? 'Safari' : 'Chrome') + ' (use the menu, then "Open in browser") and try again.';
+    if (code === 1) {
+      return IS_IOS
+        ? 'Your iPhone blocked location for this page. Open Settings → Privacy & Security → Location Services, make sure it is on, tap Safari Websites and choose "While Using the App", then reload this page and allow location.'
+        : 'Location is blocked for this page. Allow location for this site in your browser settings (the icon next to the address), then reload the page.';
+    }
+    if (code === 3) return 'Finding your location took too long. Make sure Location is on for your phone, then try again.';
+    return IS_IOS
+      ? 'Your iPhone couldn\'t find your location. Make sure Location Services is on (Settings → Privacy & Security), then try again.'
+      : 'Your phone couldn\'t find your location. Make sure Location is on, then try again.';
+  }
+  // A reading this rough (meters) can put someone at the show "miles away":
+  // on iPhone it usually means Precise Location is off for Safari.
+  const ROUGH_FIX_M = 1500;
+  function roughLocationHint() {
+    if (!cachedLocation || !(cachedLocation.accuracy > ROUGH_FIX_M)) return '';
+    return IS_IOS
+      ? ' Your iPhone only shared an approximate location. Turn on Precise Location: Settings → Privacy & Security → Location Services → Safari Websites → Precise Location.'
+      : ' Your phone only shared an approximate location. Turn on precise location for your browser and try again.';
+  }
   async function getLocation() {
     if (cachedLocation) return cachedLocation;
     if (!navigator.geolocation) {
-      throw new Error('Location not supported');
+      throw Object.assign(new Error('Location not supported'), { help: 'This browser can\'t share your location. Try Safari or Chrome.' });
     }
     return new Promise((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          cachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          cachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
           resolve(cachedLocation);
         },
-        () => reject(new Error('Location required but denied')),
+        (err) => reject(Object.assign(new Error('Location required but denied'), { help: locationHelpText(err && err.code) })),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
     });
@@ -392,16 +422,13 @@
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
           cachedLocation = loc; // update cache for follow-up requests
           resolve(loc);
         },
         (err) => {
-          // Translate browser error codes to friendly messages
-          let msg = 'Location required to listen';
-          if (err.code === 1) msg = 'Location permission denied. Audio is restricted to listeners present at the show.';
-          else if (err.code === 2) msg = 'Could not determine your location.';
-          else if (err.code === 3) msg = 'Location lookup timed out.';
+          // Friendly, device-specific help (see locationHelpText).
+          const msg = 'Listening is only for people at the show, so your location is needed. ' + locationHelpText(err && err.code);
           reject(new Error(msg));
         },
         // maximumAge: 0 forces a brand-new GPS reading every tap.
@@ -443,7 +470,7 @@
         body.viewerLat = loc.lat;
         body.viewerLng = loc.lng;
       } catch (e) {
-        showMessage(MSG_IDS.invalidLocation);
+        showMessage(MSG_IDS.invalidLocation, 9000, e && e.help, e && e.help);
         throw e;
       }
     }
@@ -469,6 +496,7 @@
 
   // Globals exposed to template onclick handlers
   window.ShowPilotVote = async function (sequenceName) {
+    if (listenOnlyBlocked()) return;
     // If a tiebreak is in progress, route through the tiebreak path
     // instead. Voting for a candidate goes via /api/tiebreak-vote;
     // voting for a non-candidate is rejected with a clear message.
@@ -527,11 +555,34 @@
       // ShowPilotRequest's behavior, which has always done this.
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error, result.data));
+      showFailure(result.data);
     }
   };
 
+  // Shows a failed vote/request. A "too far away" answer gets the server's
+  // wording plus, when the phone only gave a rough fix, how to turn on
+  // precise location (v0.33.249+).
+  function showFailure(data) {
+    const err = data && data.error;
+    const id = mapErrorToId(err, data);
+    if (id === MSG_IDS.invalidLocation && /miles of the show/i.test(err || '')) {
+      const hint = roughLocationHint();
+      showMessage(id, hint ? 9000 : undefined, hint ? err + hint : undefined, err + hint);
+      return;
+    }
+    showMessage(id, undefined, undefined, err);
+  }
+  // Listen Only (v0.33.249+): picking is closed, the page and audio stay up.
+  const LISTEN_MSG = 'Requests and voting are closed for now. You can still listen along!';
+  let listenOnly = !!boot.listenOnly;
+  function listenOnlyBlocked() {
+    if (!listenOnly) return false;
+    showMessage(MSG_IDS.failed, 4000, LISTEN_MSG, LISTEN_MSG);
+    return true;
+  }
+
   window.ShowPilotRequest = async function (sequenceName) {
+    if (listenOnlyBlocked()) return;
     let body;
     try { body = await buildBody({ sequenceName }); }
     catch { return; }
@@ -541,7 +592,7 @@
       showMessage(MSG_IDS.success);
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error, result.data));
+      showFailure(result.data);
     }
   };
 
@@ -768,7 +819,42 @@
       });
     }
 
-    // --- NOW_PLAYING_IMAGE (v0.5.13+) ---
+    // --- NEXT_PLAYLIST_IMAGE (v0.33.249+): the Up Next song's cover ---
+    const nextImgEls = document.querySelectorAll('[data-showpilot-next-img]');
+    if (nextImgEls.length) {
+      const nextSeq = data.nextScheduled ? (data.sequences || []).find(s => s.name === data.nextScheduled) : null;
+      const nextImgUrl = nextSeq && nextSeq.image_url ? nextSeq.image_url
+        : (data.nextScheduled && data.nextScheduledImageUrl) || '';
+      nextImgEls.forEach(el => {
+        if (nextImgUrl) {
+          if (el.getAttribute('src') !== nextImgUrl) el.setAttribute('src', nextImgUrl);
+          if (el.style.display === 'none') el.style.display = '';
+        } else {
+          el.style.display = 'none';
+        }
+      });
+    }
+
+    // --- NOW_PLAYING_ARTIST (v0.33.249+) ---
+    if (data.nowPlayingArtist !== undefined) {
+      const artist = data.nowPlaying ? (data.nowPlayingArtist || '') : '';
+      document.querySelectorAll('[data-showpilot-now-artist]').forEach(el => {
+        if (el.textContent !== artist) el.textContent = artist;
+      });
+    }
+
+    // --- NEXT_PLAYLIST_ARTIST (v0.33.249+) ---
+    if (data.nextScheduledArtist !== undefined) {
+      const artist = data.nextScheduled ? (data.nextScheduledArtist || '') : '';
+      document.querySelectorAll('[data-showpilot-next-artist]').forEach(el => {
+        if (el.textContent !== artist) el.textContent = artist;
+      });
+    }
+
+    // --- Songs already in the request queue (v0.33.249+) ---
+    if (data.queue) markQueued(data.queue);
+
+    // --- NOW_PLAYING_IMAGE (v0.32.13+) ---
     // Updates any <img data-showpilot-now-img> elements when the playing
     // song changes. Hides the image when no song is playing, or when the
     // current song has no cover art (image_url empty / null on the
@@ -882,12 +968,16 @@
     if (data.viewerControlMode && (data.viewerControlMode === 'RACE') !== _pageIsRace && !_swapInFlight) {
       _swapInFlight = swapModeMarkup().catch(() => {}).then(() => { _swapInFlight = null; refreshState(); });
     }
+    // Listen Only shows the last active mode's list (listDisplayMode).
+    const shownMode = data.listDisplayMode || data.viewerControlMode;
     document.querySelectorAll('[data-showpilot-container="jukebox"], [data-openfalcon-container="jukebox"]').forEach(el => {
-      setVisible(el, data.viewerControlMode === 'JUKEBOX');
+      setVisible(el, shownMode === 'JUKEBOX');
     });
     document.querySelectorAll('[data-showpilot-container="voting"], [data-openfalcon-container="voting"]').forEach(el => {
-      setVisible(el, data.viewerControlMode === 'VOTING');
+      setVisible(el, shownMode === 'VOTING');
     });
+    if (data.viewerControlMode) setListenOnly(data.viewerControlMode === 'LISTEN');
+    if (data.viewerControlMode) setModeAttr(data.viewerControlMode);
     // After-hours: visible when viewer control is OFF. Mirror of the server-side
     // logic in viewer-renderer.js, so flipping the admin "Off" toggle propagates
     // to viewers within one poll without requiring a reload.
@@ -1333,7 +1423,7 @@
       // the tiebreakVoteUpdate socket event.
       refreshState();
     } else {
-      showMessage(mapErrorToId(result.data?.error, result.data));
+      showFailure(result.data);
     }
   };
 
@@ -1380,6 +1470,7 @@
         (s.artist || '') + '|' +
         (s.image_url || '') + '|' +
         (s.category || '') + '|' +
+        (s.badge || '') + '|' +
         (voteCountsByName[s.name] || 0)
       );
     }
@@ -1416,6 +1507,56 @@
     return out;
   }
 
+  // Mirror of lib/viewer-renderer.js#badgeSlug.
+  function badgeSlug(b) {
+    return String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'badge';
+  }
+
+  // Songs already in the request queue get the showpilot-queued class and
+  // data-queue-position (1 = next), the same as the server renders, so a
+  // template (or the "Dim songs already in the queue" setting) can style them.
+  let _lastQueued = null;
+  function markQueued(queue) {
+    const pos = {};
+    queue.forEach((q, i) => { if (!pos[q.sequence_name]) pos[q.sequence_name] = i + 1; });
+    document.querySelectorAll('.sequence-item[data-seq]').forEach(el => {
+      const p = pos[el.getAttribute('data-seq')];
+      el.classList.toggle('showpilot-queued', !!p);
+      if (p) { if (el.getAttribute('data-queue-position') !== String(p)) el.setAttribute('data-queue-position', String(p)); }
+      else if (el.hasAttribute('data-queue-position')) el.removeAttribute('data-queue-position');
+    });
+    _lastQueued = queue;
+  }
+
+  // data-showpilot-mode on <html> and <body> for template CSS (the server
+  // sets it on load; this keeps it current when the mode changes).
+  const MODE_SLUGS = { VOTING: 'voting', JUKEBOX: 'jukebox', RACE: 'race', LISTEN: 'listen-only', OFF: 'off' };
+  function setModeAttr(raw) {
+    const slug = MODE_SLUGS[raw] || 'off';
+    [document.documentElement, document.body].forEach(el => {
+      if (el && el.getAttribute('data-showpilot-mode') !== slug) el.setAttribute('data-showpilot-mode', slug);
+    });
+  }
+
+  // Listen Only: body class plus one notice above the song list.
+  function setListenOnly(on) {
+    listenOnly = on;
+    if (!document.body) return;
+    document.body.classList.toggle('showpilot-listen-only', on);
+    let note = document.getElementById('showpilot-listen-notice');
+    if (!on) { if (note) note.remove(); return; }
+    if (note) return;
+    const wrappers = findPlaylistWrappers().filter(w => w.offsetParent !== null);
+    const at = wrappers[0];
+    if (!at || !at.parentElement) return;
+    note = document.createElement('div');
+    note.id = 'showpilot-listen-notice';
+    note.className = 'showpilot-listen-notice';
+    note.setAttribute('role', 'status');
+    note.textContent = LISTEN_MSG;
+    at.parentElement.insertBefore(note, at);
+  }
+
   function renderRowsForMode(sequences, voteCountsByName, mode, catOpts) {
     return withCategoryHeaders(sequences, catOpts, seq => {
       const safeNameJs = escapeJsString(seq.name);
@@ -1430,10 +1571,15 @@
       const artImg = seq.image_url
         ? `<img class="sequence-image" data-seq-name="${safeNameAttr}" src="${escapeHtml(seq.image_url)}" alt="" width="40" loading="lazy" />`
         : '';
+      // Badge: same markup as the server (queued state is applied after by markQueued).
+      const badge = seq.badge ? String(seq.badge).trim() : '';
+      const extraCls = badge ? ` showpilot-badge showpilot-badge-${badgeSlug(badge)}` : '';
+      const extraAttr = badge ? ` data-badge="${escapeHtml(badge)}"` : '';
+      const badgeEl = badge ? `<span class="sequence-badge">${escapeHtml(badge)}</span>` : '';
       if (mode === 'VOTING') {
-        return `<div class="cell-vote-playlist sequence-item" onclick="ShowPilotVote('${safeNameJs}')" data-seq="${safeNameAttr}"><div>${artImg}<span class="sequence-name">${safeDisplay}</span><div class="cell-vote-playlist-artist sequence-artist">${safeArtist}</div><span class="sequence-votes" data-seq-votes="${safeNameAttr}">${count}</span></div></div><div class="cell-vote" onclick="ShowPilotVote('${safeNameJs}')" data-seq-count="${safeNameAttr}">${count}</div>`;
+        return `<div class="cell-vote-playlist sequence-item${extraCls}" onclick="ShowPilotVote('${safeNameJs}')" data-seq="${safeNameAttr}"${extraAttr}><div>${artImg}<span class="sequence-name">${safeDisplay}</span>${badgeEl}<div class="cell-vote-playlist-artist sequence-artist">${safeArtist}</div><span class="sequence-votes" data-seq-votes="${safeNameAttr}">${count}</span></div></div><div class="cell-vote" onclick="ShowPilotVote('${safeNameJs}')" data-seq-count="${safeNameAttr}">${count}</div>`;
       } else {
-        return `<div class="jukebox-list sequence-item" onclick="ShowPilotRequest('${safeNameJs}')" data-seq="${safeNameAttr}"><div>${artImg}<span class="sequence-name">${safeDisplay}</span><div class="jukebox-list-artist sequence-artist">${safeArtist}</div><span class="sequence-requests" data-seq-requests="${safeNameAttr}"></span></div></div>`;
+        return `<div class="jukebox-list sequence-item${extraCls}" onclick="ShowPilotRequest('${safeNameJs}')" data-seq="${safeNameAttr}"${extraAttr}><div>${artImg}<span class="sequence-name">${safeDisplay}</span>${badgeEl}<div class="jukebox-list-artist sequence-artist">${safeArtist}</div><span class="sequence-requests" data-seq-requests="${safeNameAttr}"></span></div></div>`;
       }
     }).join('');
   }
@@ -1458,7 +1604,7 @@
 
   function rebuildPlaylistGridIfNeeded(data) {
     const sequences = data.sequences || [];
-    const mode = data.viewerControlMode || 'OFF';
+    const mode = data.listDisplayMode || data.viewerControlMode || 'OFF';
     // Only meaningful in JUKEBOX or VOTING; in OFF the mode containers
     // are hidden, so rebuilding their stale contents wastes work but
     // doesn't hurt. Skip to keep churn low.
@@ -1494,6 +1640,7 @@
 
       wrapper.innerHTML = renderRowsForMode(sequences, voteCountsByName, targetMode, catOpts);
       _gridSigCache.set(wrapper, desiredSig);
+      if (_lastQueued) markQueued(_lastQueued);
     }
   }
 
@@ -2182,6 +2329,14 @@
     `;
     document.head.appendChild(themeStyle);
 
+    // Shown in the player when a song has no cover (or it fails to load).
+    const COVER_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
+      '<rect width="48" height="48" rx="6" fill="#333"/>' +
+      '<path d="M20 31.5V15l14-3v16.5" fill="none" stroke="#bbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="16.5" cy="31.5" r="3.5" fill="none" stroke="#bbb" stroke-width="2.5"/>' +
+      '<circle cx="30.5" cy="28.5" r="3.5" fill="none" stroke="#bbb" stroke-width="2.5"/></svg>');
+
     // ---- Sticky-bottom panel ----
     const panel = document.createElement('div');
     panel.id = 'of-listen-panel';
@@ -2195,8 +2350,8 @@
       backdrop-filter: blur(8px);
     `;
     panel.innerHTML = `
-      <div style="max-width: 800px; margin: 0 auto; display: flex; gap: 12px; align-items: center; position: relative; z-index: 2;">
-        <img id="of-listen-cover" src="" alt=""
+      <div class="of-listen-row" style="max-width: 800px; margin: 0 auto; display: flex; gap: 12px; align-items: center; position: relative; z-index: 2;">
+        <img id="of-listen-cover" src="${COVER_PLACEHOLDER}" alt=""
              style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover;
                     background: #333; flex-shrink: 0;" />
         <div style="flex: 1; min-width: 0;">
@@ -2219,6 +2374,16 @@
     const artistEl = panel.querySelector('#of-listen-artist');
     const artistWrap = panel.querySelector('#of-listen-artist-wrap');
     const coverEl = panel.querySelector('#of-listen-cover');
+    // A cover that fails to load shows the music note instead of the
+    // browser's broken-image icon.
+    coverEl.addEventListener('error', () => {
+      if (coverEl.getAttribute('src') !== COVER_PLACEHOLDER) coverEl.src = COVER_PLACEHOLDER;
+    });
+    function setCover(url) {
+      const want = url || COVER_PLACEHOLDER;
+      if (coverEl.getAttribute('src') !== want) coverEl.src = want;
+      coverEl.style.display = '';
+    }
 
     // ---- Marquee scrolling for long titles/artists ----
     function setupMarquee(textEl, wrapEl) {
@@ -2313,10 +2478,7 @@
         artistEl.textContent = newArtist;
         setupMarquee(artistEl, artistWrap);
       }
-      if (coverEl.getAttribute('src') !== newCover) {
-        coverEl.src = newCover;
-        coverEl.style.display = newCover ? '' : 'none';
-      }
+      setCover(newCover);
       if (sequenceChanged || !_barVisible) {
         showBar();
       }
@@ -2528,7 +2690,7 @@
     `;
 
     // ---------- Christmas: C9 bulbs on a scalloped green wire ----------
-    function decoChristmas(A) {
+    function decoChristmas(A, live) {
       const N = 16;
       const palette = [
         ['#ff3b3b', '#b91c1c'], ['#22c55e', '#15803d'], ['#3b82f6', '#1d4ed8'],
@@ -2549,7 +2711,7 @@
         const twinkle = (i % 5 === 2) ? ' ofd-twinkle' : '';
         const tilt = ((r() - 0.5) * 16).toFixed(1);
         bulbs += `
-          <div class="ofd ofd-bulb${A}${twinkle}" style="left:${((i + 0.5) / N) * 100}%;--c:${hi};--dur:${dur}s;--delay:${delay}s;transform:translateX(-50%) rotate(${tilt}deg)">
+          <div class="ofd ofd-bulb${A}${twinkle}${live ? ' ofd-lb' : ''}" style="left:${((i + 0.5) / N) * 100}%;--c:${hi};--dur:${dur}s;--delay:${delay}s;--lvl:0;transform:translateX(-50%) rotate(${tilt}deg)">
             <div class="ofd-halo"></div>
             <svg viewBox="0 0 20 36" width="15" height="27" aria-hidden="true">
               <defs><linearGradient id="ofdB${i}" x1="0" x2="1">
@@ -2576,6 +2738,9 @@
         @keyframes ofdGlow { from { opacity:.38; transform:scale(.85); } to { opacity:.75; transform:scale(1.08); } }
         @keyframes ofdHot  { from { opacity:.08; } to { opacity:.28; } }
         @keyframes ofdTwinkle { 0%,55%,100% { opacity:.6; } 65% { opacity:.05; } 72% { opacity:.7; } 80% { opacity:.12; } 88% { opacity:.65; } }
+        /* "Live": while music plays, each bulb follows its frequency band (--lvl, set by the player). */
+        #of-deco.ofd-live-on .ofd-bulb.ofd-lb .ofd-halo { animation:none; opacity: calc(.14 + var(--lvl) * .86); transform: scale(calc(.72 + var(--lvl) * .62)); }
+        #of-deco.ofd-live-on .ofd-bulb.ofd-lb .ofd-hot  { animation:none; opacity: calc(.03 + var(--lvl) * .52); }
       </style>
       <svg class="ofd ofd-wire" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">
         <path d="${wire}" fill="none" stroke="#14532d" stroke-width="2.2" vector-effect="non-scaling-stroke"/>
@@ -2978,45 +3143,78 @@
         @keyframes ${prefix}Spin { from { transform: rotateX(0) rotateY(0) rotate(0); } to { transform: rotateX(360deg) rotateY(180deg) rotate(180deg); } }`;
     }
 
-    // ---------- New Year's: confetti, a glittering ball, sparkle bursts ----------
-    function decoNewYear(A) {
+    // ---------- New Year's: a spinning mirror ball throwing light, confetti ----------
+    // The ball is rows of mirror tiles; each row scrolls sideways at a speed
+    // proportional to its width (equator fastest, poles slowest, tiles shrink
+    // toward the poles), under a fixed highlight and edge shading, so it reads
+    // as a turning sphere. Light spots sweep across the page area above the
+    // player like reflections on a ceiling. "Live" (newyear-live): the player
+    // sets --beat, --energy and --treble on #of-deco while music plays.
+    function decoNewYear(A, live) {
       const confetti = decoConfetti(A, ['#facc15', '#e5e7eb', '#fde68a', '#f59e0b', '#cbd5e1', '#fef3c7'], 18, 101, 'ofdny');
-      let facets = '';
-      for (let row = 0; row < 7; row++) {
-        for (let col = 0; col < 8; col++) {
-          const x = 6 + col * 5.2 - (row % 2) * 2.6, y = 6 + row * 4.6;
-          if ((x - 24) ** 2 + (y - 22) ** 2 > 16.5 ** 2) continue;
-          facets += `<rect class="ofd-facet" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="4.4" height="3.8" rx=".5" style="--fa:${((row * 3 + col * 5) % 9) * 0.22}s" fill="${(row + col) % 3 ? '#e2e8f0' : '#fef3c7'}"/>`;
+      const R = 17, CX = 24, CY = 22, r = decoRand(66);
+      let rows = '';
+      for (let row = 0; row < 8; row++) {
+        const y = CY - R + 0.6 + row * 4.2, mid = y + 2;
+        const half = Math.sqrt(Math.max(0, R * R - (mid - CY) ** 2));
+        if (half < 2) continue;
+        const pitch = Math.max(1.8, half * 0.42), tw = pitch - 0.6, n = Math.ceil((2 * half) / pitch) + 1;
+        let tiles = '';
+        for (let k = -n; k <= n; k++) {
+          const x = CX - half + k * pitch, bright = r() < 0.18;
+          tiles += `<rect class="${bright ? 'ofd-nyglint' : 'ofd-nytile'}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${tw.toFixed(2)}" height="3.6" rx=".4" fill="${bright ? '#fffbeb' : ['#e2e8f0', '#cbd5e1', '#f1f5f9', '#fef3c7'][k & 3]}"/>`;
         }
+        rows += `<g class="ofd-nyrow" style="--rw:${(pitch * n).toFixed(2)}px">${tiles}</g>`;
       }
       const ball = `
         <svg viewBox="0 0 48 46" aria-hidden="true">
-          <defs><radialGradient id="ofdNyBall" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#94a3b8"/><stop offset="1" stop-color="#1e293b"/></radialGradient>
-            <clipPath id="ofdNyClip"><circle cx="24" cy="22" r="17"/></clipPath></defs>
+          <defs>
+            <radialGradient id="ofdNyBase" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#1e293b"/></radialGradient>
+            <radialGradient id="ofdNyShade" cx="42%" cy="38%" r="62%"><stop offset=".55" stop-color="rgba(15,23,42,0)"/><stop offset="1" stop-color="rgba(15,23,42,.85)"/></radialGradient>
+            <radialGradient id="ofdNyHalo"><stop offset="0" stop-color="rgba(254,243,199,.95)"/><stop offset="1" stop-color="rgba(250,204,21,0)"/></radialGradient>
+            <clipPath id="ofdNyClip"><circle cx="${CX}" cy="${CY}" r="${R}"/></clipPath>
+          </defs>
+          <circle class="ofd-nyhalo" cx="${CX}" cy="${CY}" r="${R + 9}" fill="url(#ofdNyHalo)"/>
           <path d="M24,0 V5" stroke="#cbd5e1" stroke-width="1.2"/>
-          <circle cx="24" cy="22" r="17" fill="url(#ofdNyBall)"/>
-          <g clip-path="url(#ofdNyClip)" opacity=".85">${facets}</g>
-          <circle cx="18" cy="15" r="3.4" fill="#fff" opacity=".8"/>
+          <circle cx="${CX}" cy="${CY}" r="${R}" fill="url(#ofdNyBase)"/>
+          <g clip-path="url(#ofdNyClip)"><g class="ofd-nytiles">${rows}</g></g>
+          <circle cx="${CX}" cy="${CY}" r="${R}" fill="url(#ofdNyShade)"/>
+          <circle cx="18" cy="15" r="3.2" fill="#fff" opacity=".85"/><circle cx="16.4" cy="13.6" r="1.1" fill="#fff"/>
         </svg>`;
-      const r = decoRand(66);
-      let sparks = '';
-      for (let i = 0; i < 5; i++) {
-        sparks += `<div class="ofd ofd-nyspark${A}" style="left:${(10 + i * 19 + r() * 6).toFixed(1)}%;top:${(-30 + r() * 20).toFixed(0)}px;--delay:${(-r() * 3.5).toFixed(2)}s">
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g stroke="${i % 2 ? '#fde68a' : '#f8fafc'}" stroke-width="1.4" stroke-linecap="round">
-            <path d="M12,2 V7 M12,17 V22 M2,12 H7 M17,12 H22 M5,5 L8.5,8.5 M15.5,15.5 L19,19 M19,5 L15.5,8.5 M8.5,15.5 L5,19"/></g></svg></div>`;
+      // Light spots: one scattered set, drawn twice side by side so the sweep loops seamlessly.
+      let spots = '';
+      for (let copy = 0; copy < 2; copy++) {
+        const rs = decoRand(404);
+        for (let i = 0; i < 14; i++) {
+          const size = 3 + Math.round(rs() * 6);
+          spots += `<i style="left:${(copy * 50 + rs() * 50).toFixed(2)}%;top:${(4 + rs() * 80).toFixed(1)}%;width:${size}px;height:${size}px;opacity:${(0.45 + rs() * 0.5).toFixed(2)};background:${rs() < 0.3 ? '#fde68a' : '#fff'}"></i>`;
+        }
       }
       return `<style>${decoBase}${decoConfettiCss('ofdny')}
-        #of-deco .ofd-nyball { right:18%; bottom:100%; margin-bottom:6px; width:40px; filter: drop-shadow(0 0 8px rgba(250,204,21,.45)); }
+        #of-deco .ofd-nyball { right:18%; bottom:100%; margin-bottom:6px; width:40px; }
         #of-deco .ofd-nyball svg { width:100%; height:auto; }
+        #of-deco .ofd-nyball .ofd-nyhalo { opacity:.35; transform-box: view-box; transform-origin: 24px 22px; }
+        #of-deco .ofd-nyrow { transform-box: view-box; }
         #of-deco .ofd-nyball.ofd-anim { transform-origin: 50% 0; animation: ofdNySwing 5s ease-in-out infinite alternate; }
-        #of-deco .ofd-nyball.ofd-anim .ofd-facet { animation: ofdNyFacet 2s ease-in-out var(--fa) infinite; }
-        @keyframes ofdNySwing { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
-        @keyframes ofdNyFacet { 0%,100% { opacity:.55; } 50% { opacity:1; fill:#fff; } }
-        #of-deco .ofd-nyspark { opacity:.8; }
-        #of-deco .ofd-nyspark.ofd-anim { animation: ofdNySpark 3.5s ease-out var(--delay) infinite; }
-        @keyframes ofdNySpark { 0%,60% { opacity:0; transform: scale(.2) rotate(0); } 70% { opacity:1; } 90% { opacity:0; transform: scale(1.2) rotate(30deg); } 100% { opacity:0; } }
+        #of-deco .ofd-nyball.ofd-anim .ofd-nyrow { animation: ofdNyRow 7s linear infinite; }
+        #of-deco .ofd-nyball.ofd-anim .ofd-nyglint { animation: ofdNyGlint 2.6s ease-in-out infinite; }
+        @keyframes ofdNySwing { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+        @keyframes ofdNyRow { from { transform: translateX(0); } to { transform: translateX(var(--rw)); } }
+        @keyframes ofdNyGlint { 0%,100% { opacity:.45; } 50% { opacity:1; } }
+        #of-deco .ofd-nyspots { left:0; right:0; bottom:100%; height:96px; overflow:hidden; opacity:.55; }
+        #of-deco .ofd-nyspots-in { position:absolute; top:0; left:0; width:200%; height:100%; }
+        #of-deco .ofd-nyspots-in i { position:absolute; border-radius:50%; }
+        #of-deco .ofd-nyspots.ofd-anim .ofd-nyspots-in { animation: ofdNySpots 16s linear infinite; }
+        @keyframes ofdNySpots { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        /* Live: the music drives the light (variables set by the player). */
+        #of-deco.ofd-live-on .ofd-nyball .ofd-nyhalo { opacity: calc(.12 + var(--beat, 0) * .88); transform: scale(calc(.85 + var(--beat, 0) * .45)); }
+        #of-deco.ofd-live-on .ofd-nyball .ofd-nyglint { animation:none; opacity: calc(.3 + var(--treble, 0) * .7); }
+        #of-deco.ofd-live-on .ofd-nyspots { opacity: calc(.18 + var(--energy, 0) * .55 + var(--beat, 0) * .27); }
+        #of-deco .ofd-nyburst .ofdny-bit { animation-iteration-count: 1 !important; }
       </style>
-      <div class="ofd ofd-nyball${A}">${ball}</div>${sparks}${confetti}`;
+      <div class="ofd ofd-nyspots${A}"><div class="ofd-nyspots-in">${spots}</div></div>
+      <div class="ofd ofd-nyball${A}">${ball}</div>${confetti}
+      <div class="ofd ofd-nyburst" style="left:0;right:0;top:0;height:0"></div>`;
     }
 
     // ---------- Día de los Muertos: papel picado banner + marigold petals ----------

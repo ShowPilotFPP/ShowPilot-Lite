@@ -409,7 +409,6 @@
     .mode-pill.jukebox { background: var(--rgb-blue); color: #fff; box-shadow: 0 0 12px rgba(59,130,246,0.3); }
     .mode-pill.race { background: #f59e0b; color: #000; box-shadow: 0 0 12px rgba(245,158,11,0.4); }
     .mode-pill.off { background: var(--status-neutral); color: #fff; }
-    .mode-pill.listen { background: #0d9488; color: #fff; box-shadow: 0 0 12px rgba(13,148,136,0.35); }
     .header-spacer { margin-left: auto; }
     /* "Show" link in admin header — opens the viewer in a new tab.
        Styled like the user button (subtle outline on dark background)
@@ -1352,17 +1351,12 @@
        freed by hiding columns is spread across all of them instead of piling
        up in Display Name. Text that doesn't fit its share is cut with … (full
        text on hover; click a name to edit it in full). Shares: Display Name
-       23, Sequence Name 19, Artist 17, Category 19, Badge 14 (v0.33.249: the
-       Badge column had no share, so it got only the leftovers and its
-       dropdown was squeezed to two letters). Below the min-width the table
-       scrolls sideways instead of crushing columns. */
-    #sequencesTable { width: 100%; min-width: 1400px; }
-    #sequencesTable th.col-display, #sequencesTable td.col-display { width: 23%; max-width: 0; }
-    #sequencesTable th.col-seqname, #sequencesTable td.col-seqname { width: 19%; max-width: 0; }
-    #sequencesTable th.col-artist, #sequencesTable td.col-artist { width: 17%; max-width: 0; }
-    #sequencesTable th.col-category, #sequencesTable td.col-category { width: 19%; max-width: 0; }
-    #sequencesTable th.col-badge, #sequencesTable td.col-badge { width: 14%; max-width: 0; }
-    #sequencesTable .seq-badge-select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+       28, Sequence Name 22, Artist 18, Category 22. */
+    #sequencesTable { width: 100%; min-width: 860px; }
+    #sequencesTable th.col-display, #sequencesTable td.col-display { width: 28%; max-width: 0; }
+    #sequencesTable th.col-seqname, #sequencesTable td.col-seqname { width: 22%; max-width: 0; }
+    #sequencesTable th.col-artist, #sequencesTable td.col-artist { width: 18%; max-width: 0; }
+    #sequencesTable th.col-category, #sequencesTable td.col-category { width: 22%; max-width: 0; }
     #sequencesTable .col-seqname code { display: block; max-width: 100%; width: fit-content; overflow: hidden; text-overflow: ellipsis;
                                         white-space: nowrap; }
     #sequencesTable .col-display .editable, #sequencesTable .col-artist .editable { max-width: 100%; overflow-wrap: anywhere; vertical-align: middle; }
@@ -1386,7 +1380,7 @@
     table.seq-compact .col-display .editable:focus, table.seq-compact .col-artist .editable:focus { white-space: normal; overflow: visible; }
     /* Column chooser: hidden columns keep their settings, they're just not shown. */
     #sequencesTable.hide-art .col-art, #sequencesTable.hide-seqname .col-seqname, #sequencesTable.hide-artist .col-artist,
-    #sequencesTable.hide-category .col-category, #sequencesTable.hide-badge .col-badge, #sequencesTable.hide-visible .col-visible, #sequencesTable.hide-vote .col-vote,
+    #sequencesTable.hide-category .col-category, #sequencesTable.hide-visible .col-visible, #sequencesTable.hide-vote .col-vote,
     #sequencesTable.hide-jukebox .col-jukebox, #sequencesTable.hide-psa .col-psa, #sequencesTable.hide-cooldown .col-cooldown,
     #sequencesTable.hide-search .col-search, #sequencesTable.hide-lang .col-lang,
     #sequencesTable.hide-status .col-status, #sequencesTable.hide-index .col-index { display: none !important; }
@@ -1852,7 +1846,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.89</span>
+        <span class="app-version">v0.5.86</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -1926,9 +1920,6 @@
            ============================================================ -->
       <div class="tab-pane active" data-pane="dashboard">
 
-        <!-- Out-of-date show player (beta.18+): filled by renderShowPlayerUpdate() -->
-        <div id="showPlayerUpdateBanner" role="status" style="display:none; margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--status-warning); background: var(--status-warning-soft); font-size: 0.9rem; line-height: 1.45;"></div>
-
         <div class="now-playing-card" style="margin-bottom: 1.25rem;">
           <span class="np-pulse"></span>
           <div>
@@ -1984,7 +1975,6 @@
               <option value="VOTING">Voting</option>
               <option value="JUKEBOX">Jukebox</option>
               <option value="RACE">Race</option>
-              <option value="LISTEN" title="Viewers can see what's playing and listen on their phones, but can't vote or request">Listen only</option>
             </select>
             <button class="secondary" onclick="resetVotes()">Reset Votes</button>
             <button class="secondary" onclick="purgeQueue()">Purge Queue</button>
@@ -1994,12 +1984,7 @@
 
 
         <div class="card">
-          <div class="row" style="justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <h2 style="margin: 0;">Top Sequences (all time)</h2>
-            <label class="muted" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer;">
-              <input type="checkbox" id="topHidePsa" onchange="toggleTopHidePsa(this.checked)" /> Hide PSAs
-            </label>
-          </div>
+          <h2>Top Sequences (all time)</h2>
           <table>
             <thead><tr><th>Sequence</th><th style="width: 80px;">Plays</th></tr></thead>
             <tbody id="topBody"><tr><td colspan="2" class="muted">Loading…</td></tr></tbody>
@@ -2087,13 +2072,13 @@
             <button class="secondary" onclick="bulkSetField('visible', 1)">Show</button>
             <button class="secondary" onclick="bulkSetField('visible', 0)">Hide</button>
             <select id="seqBulkCategory" onchange="bulkSetCategory(this)" title="Set the category of all selected sequences" style="width: auto; padding: 0.35rem 0.5rem;"></select>
-            <select id="seqBulkBadge" onchange="bulkSetBadge(this)" title="Set or clear the badge of all selected sequences" style="width: auto; padding: 0.35rem 0.5rem;"></select>
             <button class="secondary" onclick="bulkScrapeSelected()">🪄 Re-scrape titles</button>
             <button class="danger" onclick="bulkDeleteSelected()">Delete selected</button>
             <button class="secondary" onclick="clearSeqSelection()">Clear</button>
           </div>
 
-          <div id="seqDuplicatesNote" class="muted" style="display:none; margin: 0 0 0.6rem; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-left: 3px solid var(--status-warning, #f59e0b); border-radius: 6px; font-size: 0.85rem;"></div>
+          </div>
+
           <div style="overflow-x: auto;">
             <table id="sequencesTable">
               <thead>
@@ -2109,7 +2094,6 @@
                   <th class="col-tight col-index" title="Position in your show player's playlist, from the last sync. If the wrong song plays, check this matches the playlist (and sync again).">Playlist #</th>
                   <th class="col-artist">Artist</th>
                   <th class="col-category" title="Group sequences on the viewer page. Manage categories in the Categories card below.">Category</th>
-                  <th class="col-badge" title="A short label shown after the song's name on the viewer page, like New or Fan Favorite.">Badge</th>
                   <th class="col-tight col-visible">Visible</th>
                   <th class="col-tight col-vote">Vote</th>
                   <th class="col-tight col-jukebox">Jukebox</th>
@@ -2158,42 +2142,6 @@
             With headings off, categories still control visibility but the viewer list keeps its normal order.
             Templates can restyle headings with the <code>.sequence-category-header</code> CSS class.
           </p>
-          <h3 style="margin: 1.25rem 0 0.5rem; font-size: 1rem;">Song labels on the viewer page</h3>
-          <div class="row" style="gap: 1.5rem; align-items: center; flex-wrap: wrap;">
-            <label style="display:flex; align-items:center; gap:0.5rem; margin:0;">
-              <input type="checkbox" id="cfgViewerShowBadges" onchange="saveCategoryDisplayOptions()" style="width:auto;" />
-              Show badges on the viewer page (set them in the Badge column)
-            </label>
-            <label style="display:flex; align-items:center; gap:0.5rem; margin:0;">
-              <input type="checkbox" id="cfgViewerDimQueued" onchange="saveCategoryDisplayOptions()" style="width:auto;" />
-              Dim songs that are already in the request queue
-            </label>
-          </div>
-          <div class="row" style="gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 0.6rem;">
-            <label style="display:flex; align-items:center; gap:0.5rem; margin:0;">
-              Badge position
-              <select id="cfgBadgePosition" onchange="saveCategoryDisplayOptions()" style="width:auto;">
-                <option value="corner">Top corner of the song</option>
-                <option value="inline">Next to the song name</option>
-              </select>
-            </label>
-            <label style="display:flex; align-items:center; gap:0.5rem; margin:0;">
-              Badge color <input type="color" id="cfgBadgeBg" value="#dc2626" onchange="saveCategoryDisplayOptions()" style="width:44px; height:30px; padding:0;" />
-            </label>
-            <label style="display:flex; align-items:center; gap:0.5rem; margin:0;">
-              Text color <input type="color" id="cfgBadgeColor" value="#ffffff" onchange="saveCategoryDisplayOptions()" style="width:44px; height:30px; padding:0;" />
-            </label>
-          </div>
-          <div id="badgePreview" aria-label="Badge preview" style="position: relative; max-width: 340px; margin: 0.75rem 0 0.25rem; padding: 0.7rem 0.9rem; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-input);">
-            <span id="badgePreviewChip" style="padding: 0.15em 0.55em; border-radius: 999px; font-size: 0.7rem; font-weight: 700; line-height: 1.4; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;">Fan Favorite</span>
-            <div id="badgePreviewName" style="font-weight: 700;">Song title</div>
-            <div class="muted" style="font-size: 0.85rem;">Artist</div>
-          </div>
-          <p class="muted" style="font-size: 0.8rem;">
-            For template authors: a song tile with a badge has <code>data-badge</code>, the class <code>showpilot-badge-&lt;name&gt;</code>
-            (for example <code>showpilot-badge-fan-favorite</code>) and a <code>.sequence-badge</code> label. A song in the request queue has
-            the class <code>showpilot-queued</code> and <code>data-queue-position</code> (1 = next). Both update live.
-          </p>
         </div>
 
         <div class="card">
@@ -2234,14 +2182,14 @@
             <h2 style="margin: 0;">Queue</h2>
             <div class="row" style="gap: 0.5rem; margin: 0;">
               <button class="secondary" onclick="loadQueueTab()">Refresh</button>
-              <button class="danger" onclick="clearAllQueue()" title="Remove every request that hasn't played yet. Recently played stays.">Clear Queue</button>
+              <button class="danger" onclick="clearAllQueue()">Clear All</button>
             </div>
           </div>
 
           <h3 style="font-size: 1rem; color: var(--text-muted); margin: 1rem 0 0.5rem;">Pending requests</h3>
           <div id="queuePending" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
 
-          <h3 id="queueRecentTitle" style="font-size: 1rem; color: var(--text-muted); margin: 1.5rem 0 0.5rem;">Recently played requests (last 20)</h3>
+          <h3 style="font-size: 1rem; color: var(--text-muted); margin: 1.5rem 0 0.5rem;">Recently played (last 20)</h3>
           <div id="queueRecent" style="display: flex; flex-direction: column; gap: 0.4rem; opacity: 0.85;"></div>
         </div>
       </div>
@@ -2367,7 +2315,6 @@
             <div class="sub-tab" data-subtab="viewer-effects" onclick="switchTab('viewer-effects')">Page Effects</div>
             <div class="sub-tab" data-subtab="viewer-phone" onclick="switchTab('viewer-phone')">Listen-on-Phone</div>
             <div class="sub-tab" data-subtab="viewer-schedule" onclick="switchTab('viewer-schedule')">Scheduled Switches</div>
-            <div class="sub-tab" data-subtab="viewer-globalcss" onclick="switchTab('viewer-globalcss')">Global CSS</div>
             <div class="sub-tab" data-subtab="viewer-translation" onclick="switchTab('viewer-translation')">Translation</div>
           </div>
         </div>
@@ -2384,7 +2331,7 @@
             </div>
           </div>
           <p class="muted" style="margin-bottom: 0.75rem;">
-            Edit your viewer page HTML. Supports Remote Falcon placeholders like <code>{PLAYLISTS}</code>, <code>{NOW_PLAYING}</code>, <code>{JUKEBOX_QUEUE}</code>, and mode containers like <code>{jukebox-dynamic-container}</code>. ShowPilot adds <code>{NOW_PLAYING_ARTIST}</code>, <code>{NOW_PLAYING_IMAGE}</code>, <code>{NEXT_PLAYLIST_ARTIST}</code> and <code>{NEXT_PLAYLIST_IMAGE}</code> (Up Next artist and cover), <code>{NOW_PLAYING_TIMER}</code> and <code>{NOW_PLAYING_PROGRESS}</code>.
+            Edit your viewer page HTML. Supports Remote Falcon placeholders like <code>{PLAYLISTS}</code>, <code>{NOW_PLAYING}</code>, <code>{JUKEBOX_QUEUE}</code>, and mode containers like <code>{jukebox-dynamic-container}</code>.
             <a href="/" target="_blank" style="color: var(--accent);">Open viewer page →</a>
           </p>
 
@@ -2436,8 +2383,6 @@
                 <button class="designer-tab active of-tpl-bypass-lock" data-designer-tab="settings" onclick="switchDesignerTab('settings')">⚙️ Settings</button>
                 <button class="designer-tab of-tpl-bypass-lock" data-designer-tab="blocks" onclick="switchDesignerTab('blocks')">🧱 Blocks</button>
                 <button class="designer-tab of-tpl-bypass-lock" data-designer-tab="code" onclick="switchDesignerTab('code')">⌨️ Code</button>
-                <button class="secondary" onclick="document.getElementById('tplUploadFile').click()" id="tplUploadBtn" title="Replace this page's code with an .html file from your computer (you still Save Changes to make it live)">📄 Load from file…</button>
-                <input type="file" id="tplUploadFile" accept=".html,.htm,.txt,text/html,text/plain" style="display:none;" onchange="loadTemplateFromFile(this)" />
                 <span style="flex: 1;"></span>
                 <button class="secondary" onclick="discardDraft()" id="tplDiscardBtn" style="display:none;">Discard Changes</button>
                 <button onclick="commitDraft()" id="tplCommitBtn" style="display:none;">Save Changes</button>
@@ -2523,23 +2468,10 @@
                 <div>
                   <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 0.4rem; gap: 0.5rem;">
                     <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Live Preview</span>
-                    <button class="secondary" onclick="refreshPreview(true)" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Refresh preview">↻</button>
+                    <button class="secondary" onclick="refreshPreview()" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Refresh preview">↻</button>
                   </div>
-                  <div style="position: relative; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #000; height: 600px;">
+                  <div style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #000; height: 600px;">
                     <iframe id="designerPreview" style="width: 100%; height: 100%; border: 0; background: #fff;" sandbox="allow-same-origin allow-scripts"></iframe>
-                    <!-- Shown instead of loading the preview when the last preview never
-                         finished loading (v0.33.249+): a template script that hangs
-                         freezes the whole admin page, not just the preview. -->
-                    <div id="previewPaused" style="display:none; position:absolute; inset:0; padding:1.5rem; background: var(--bg-elevated, #111827); color: var(--text, #fff); overflow:auto;">
-                      <h3 style="margin-top:0;">Preview paused</h3>
-                      <p>The preview didn't finish loading last time and may have frozen this page. That usually means a script in the template is stuck (for example an endless loop).</p>
-                      <p class="muted" style="font-size:0.85rem;">Your live viewer page is not affected: it only changes when you Save Changes.</p>
-                      <div class="row" style="gap:0.5rem; flex-wrap:wrap;">
-                        <button class="danger" onclick="discardDraft()">Discard unsaved changes</button>
-                        <button class="secondary" onclick="refreshPreview(true)">Load preview anyway</button>
-                      </div>
-                      <p class="muted" style="font-size:0.8rem; margin-bottom:0;">Or fix the script in the Code editor first, then load the preview.</p>
-                    </div>
                   </div>
                   <div class="muted" style="font-size: 0.75rem; margin-top: 0.4rem;">
                     Preview shows your draft. Save Changes to apply to the live viewer page.
@@ -2551,33 +2483,6 @@
         </div>
 
 
-        </div>
-
-        <div class="sub-tab-pane" data-subtab="viewer-globalcss">
-        <div class="card">
-          <h2>Global CSS</h2>
-          <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0.75rem;">
-            One stylesheet loaded on every viewer page, whichever template is active (and in the preview).
-            It loads before the template's own styles, so a template can still override anything here.
-            Handy for keeping a season's colors and fonts in one place across several templates.
-          </p>
-          <div class="row" style="margin-bottom: 0.5rem;">
-            <input type="checkbox" id="gcssEnabled" />
-            <label for="gcssEnabled" style="margin: 0;">Use the global CSS on viewer pages</label>
-          </div>
-          <textarea id="gcssText" spellcheck="false" placeholder="/* e.g. */&#10;:root { --show-accent: #ff7a00; }&#10;body { font-family: 'Creepster', cursive; }" style="width: 100%; min-height: 380px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; tab-size: 2;"></textarea>
-          <div class="row" style="gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center;">
-            <button onclick="saveGlobalCss()">Save</button>
-            <button class="secondary" onclick="document.getElementById('gcssFile').click()">📄 Load from file…</button>
-            <input type="file" id="gcssFile" accept=".css,.txt,text/css,text/plain" style="display:none;" onchange="loadGlobalCssFile(this)" />
-            <button class="secondary" id="gcssRestoreBtn" onclick="restoreGlobalCss()" title="Go back to what was saved before the last Save">↶ Restore previous</button>
-            <span id="gcssStatus" class="muted" style="font-size: 0.85rem;"></span>
-          </div>
-          <p class="muted" style="font-size: 0.8rem; margin-bottom: 0;">
-            If a change breaks your pages, untick the box (pages go back to their own styles at once) or use Restore previous.
-            Saved in ShowPilot's database, so it survives updates and is included in backups.
-          </p>
-        </div>
         </div>
 
         <div class="sub-tab-pane" data-subtab="viewer-effects">
@@ -2679,7 +2584,7 @@
               <label for="cfg_player_decoration">Decoration theme</label>
               <select id="cfg_player_decoration" onchange="saveSetting('player_decoration', this.value); updatePlayerCustomColorVisibility();">
                 <option value="none">None</option>
-                <option value="newyear">🎉 New Year's — confetti &amp; spinning mirror ball</option>
+                <option value="newyear">🎉 New Year's — confetti &amp; glitter ball</option>
                 <option value="lunarnewyear">🏮 Lunar New Year — red lanterns</option>
                 <option value="valentines">💝 Valentine's — hearts</option>
                 <option value="mardigras">🎭 Mardi Gras — beads &amp; mask</option>
@@ -2927,7 +2832,7 @@
               <label for="sch_snapshot" style="margin: 0;">Also restore</label>
               <select id="sch_snapshot"><option value="">No snapshot</option></select>
               <label for="sch_mode" style="margin: 0;">and set the mode to</label>
-              <select id="sch_mode"><option value="">(don't change)</option><option value="VOTING">Voting</option><option value="JUKEBOX">Jukebox</option><option value="RACE">Race</option><option value="LISTEN">Listen only</option><option value="OFF">Off</option></select>
+              <select id="sch_mode"><option value="">(don't change)</option><option value="VOTING">Voting</option><option value="JUKEBOX">Jukebox</option><option value="RACE">Race</option><option value="OFF">Off</option></select>
             </div>
             <div class="row" style="gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
               <input type="checkbox" id="sch_enabled" checked />
@@ -3038,7 +2943,6 @@
             <div class="sub-tab" data-subtab="public-access" onclick="switchTab('public-access')">Public Access</div>
             <div class="sub-tab" data-subtab="backup" onclick="switchTab('backup')">Backup &amp; Restore</div>
             <div class="sub-tab" data-subtab="cockpit" onclick="switchTab('cockpit')">Cockpit</div>
-            <div class="sub-tab" data-subtab="debug" onclick="switchTab('debug')">Debug</div>
           </div>
 
           <!-- GENERAL SETTINGS — applies to all templates -->
@@ -3612,22 +3516,6 @@
             <!-- The inspect/policies UI gets injected here -->
             <div id="restorePoliciesArea" style="display: none; margin-top: 1rem;"></div>
           </div>
-
-          <!-- DEBUG — server log (mirrored from ShowPilot v0.33.249) -->
-          <div class="sub-tab-pane" data-subtab="debug">
-            <h3 style="margin: 0 0 0.25rem;">Server log</h3>
-            <p class="muted" style="font-size: 0.85rem; margin: 0 0 0.75rem;">
-              What ShowPilot-Lite has been doing: what the show player was told to play, what it reported playing, requests, votes, errors.
-              When something goes wrong, <b>Download log</b> and send the file with your report. Times are UTC.
-              Tokens and passwords are hidden; viewers' IP addresses can appear in it.
-            </p>
-            <div class="row" style="gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
-              <button type="button" onclick="window.location.href = '/api/admin/server-log/download'">⬇ Download log</button>
-              <input type="text" id="serverLogFilter" placeholder="Only lines containing… (e.g. queue, playing, error)" style="flex: 1; min-width: 200px;" onkeydown="if (event.key === 'Enter') loadServerLog()" />
-              <button type="button" class="secondary" onclick="loadServerLog()">↻ Show latest</button>
-            </div>
-            <pre id="serverLogView" style="max-height: 420px; overflow: auto; font-size: 12px; line-height: 1.45; padding: 0.75rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; white-space: pre-wrap; word-break: break-word; margin: 0 0 1.5rem;">Open this page to see the latest lines.</pre>
-          </div>
         </div>
 
         <!-- BACKUP & RESTORE pane is inside the Settings card above
@@ -3950,10 +3838,6 @@
         // Only init Monaco if the user actually switches to Code mode;
         // saves time on initial visit.
         if (currentMode === 'code') initMonacoIfNeeded();
-        // The editor may have been built while this tab was hidden (template
-        // loaded at admin start), which leaves it drawn at zero size: blank
-        // until you left and came back (GitHub #35). Redraw it now.
-        if (monacoEditor) setTimeout(() => monacoEditor.layout(), 0);
         // Refresh preview iframe in case data changed (e.g. now playing)
         if (selectedTplId !== null) refreshPreview();
       }
@@ -5211,10 +5095,6 @@
       show('loginView'); hide('appView');
       document.getElementById('loginPassword').value = '';
       document.getElementById('loginMsg').textContent = '';
-      // Start over from a clean page (v0.5.89): the new layout's menu, top bar
-      // and banners live outside the admin view, and the next person to sign
-      // in may use the classic layout.
-      window.location.replace(window.location.pathname);
     }
 
     function renderHeaderUser() {
@@ -5746,8 +5626,6 @@
       if (name === 'public-access') loadCloudflaredStatus();
       if (name === 'viewer-translation') loadTranslationSettings();
       if (name === 'viewer-schedule') loadSchedules();
-      if (name === 'viewer-globalcss') loadGlobalCss();
-      if (name === 'debug') loadServerLog();
     }
 
     // Song progress bar color: '' means match the player theme (main v0.33.207+).
@@ -5949,7 +5827,7 @@
           badge.className = 'pill pill-danger';
           setVcToggle(btn, false);
         } else {
-          badge.textContent = 'ON · ' + modeText(mode);
+          badge.textContent = 'ON · ' + mode;
           badge.className = 'pill pill-success';
           setVcToggle(btn, true);
         }
@@ -5958,7 +5836,7 @@
       const pill = document.getElementById('modePill');
       if (pill) {
         pill.className = 'mode-pill ' + (mode || 'off').toLowerCase();
-        pill.textContent = modeText(mode);
+        pill.textContent = mode || 'OFF';
       }
     }
 
@@ -6034,36 +5912,20 @@
       }
 
       // Top sequences table
-      renderTopSequences(d);
-    }
-
-    // Top Sequences card (dashboard). "Hide PSAs" is remembered per browser.
-    let _topStats = null;
-    function topHidePsa() {
-      try { return localStorage.getItem('sp_top_hide_psa') === '1'; } catch (e) { return false; }
-    }
-    function toggleTopHidePsa(on) {
-      try { localStorage.setItem('sp_top_hide_psa', on ? '1' : '0'); } catch (e) {}
-      if (_topStats) renderTopSequences(_topStats);
-    }
-    function renderTopSequences(d) {
-      _topStats = d;
       const tbody = document.getElementById('topBody');
-      if (!tbody) return;
-      const hide = topHidePsa();
-      const box = document.getElementById('topHidePsa');
-      if (box) box.checked = hide;
-      const top = (hide ? d.topSequencesNoPsa : d.topSequences) || d.topSequences || [];
-      tbody.innerHTML = '';
-      if (top.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="2" class="muted">No plays yet</td></tr>';
-        return;
+      if (tbody) {
+        tbody.innerHTML = '';
+        const top = d.topSequences || [];
+        if (top.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="2" class="muted">No plays yet</td></tr>';
+        } else {
+          top.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${escapeHtml(s.sequence_name)}</td><td>${s.plays}</td>`;
+            tbody.appendChild(tr);
+          });
+        }
       }
-      top.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(s.sequence_name)}</td><td>${s.plays}</td>`;
-        tbody.appendChild(tr);
-      });
     }
 
     // ============================================================
@@ -6179,6 +6041,7 @@
       };
     }
 
+    // Uses the same From/To range as the per-sequence table (empty = all time).
     async function loadVisitorStats() {
       const from = document.getElementById('statsFrom')?.value || '';
       const to = document.getElementById('statsTo')?.value || '';
@@ -6483,49 +6346,6 @@
       loadSequences(); // refresh counts + pick up canonical spelling / new category
     }
 
-    // ======= Song badges (v0.33.249+) =======
-    // A short label shown after the song's name on the viewer page. The list
-    // offers common ones plus any already in use; "Custom…" asks for text.
-    const BADGE_PRESETS = ['New', 'Fan Favorite', 'Classic', 'Kids\' Pick', 'Pretty', 'Funny', 'Spooky'];
-    const BADGE_CUSTOM = '__custom__';
-    const BADGE_CLEAR = '__clear__';
-    function fillBadgeSelect(sel, current, noneLabel, bulk) {
-      sel.innerHTML = '';
-      const add = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; sel.appendChild(o); return o; };
-      add('', noneLabel);
-      if (bulk) add(BADGE_CLEAR, 'No badge');
-      const names = BADGE_PRESETS.slice();
-      (sequencesCache || []).forEach(x => { const b = String(x.badge || '').trim(); if (b && !names.some(n => n.toLowerCase() === b.toLowerCase())) names.push(b); });
-      const cur = String(current || '').trim().toLowerCase();
-      names.forEach(n => { const o = add(n, n); if (cur && n.toLowerCase() === cur) o.selected = true; });
-      add(BADGE_CUSTOM, 'Custom…');
-    }
-    async function resolveBadgeChoice(sel) {
-      if (sel.value === BADGE_CLEAR) return '';
-      if (sel.value !== BADGE_CUSTOM) return sel.value;
-      const v = await showPrompt('Badge text (up to 24 characters), e.g. "New for 2026"', '', { title: 'Custom badge' });
-      if (v === null || v === undefined || !String(v).trim()) return undefined;
-      return String(v).trim().slice(0, 24);
-    }
-    async function onSeqBadgeChange(id, sel) {
-      const value = await resolveBadgeChoice(sel);
-      if (value === undefined) { loadSequences(); return; }
-      await updateSeqField(id, 'badge', value);
-      loadSequences();
-    }
-    async function bulkSetBadge(sel) {
-      if (_seqSelection.size === 0 || sel.value === '') { sel.value = ''; return; }
-      const value = await resolveBadgeChoice(sel);
-      if (value === undefined) { sel.value = ''; return; }
-      await api('/sequences/bulk-badge', { method: 'POST', body: JSON.stringify({ ids: Array.from(_seqSelection), badge: value }) });
-      clearSeqSelection();
-      loadSequences();
-    }
-    function refreshBulkBadgeSelect() {
-      const sel = document.getElementById('seqBulkBadge');
-      if (sel) fillBadgeSelect(sel, '', 'Set badge…', true);
-    }
-
     async function bulkSetCategory(sel) {
       if (_seqSelection.size === 0) { sel.value = ''; return; }
       const value = await resolveCategoryChoice(sel);
@@ -6542,49 +6362,13 @@
       const lbl = document.getElementById('cfgUncategorizedLabel');
       if (cb) cb.checked = r.data.viewer_show_categories !== 0;
       if (lbl) lbl.value = r.data.uncategorized_label || 'Other';
-      const sb = document.getElementById('cfgViewerShowBadges');
-      const dq = document.getElementById('cfgViewerDimQueued');
-      if (sb) sb.checked = r.data.viewer_show_badges !== 0;
-      if (dq) dq.checked = r.data.viewer_dim_queued === 1;
-      const bp = document.getElementById('cfgBadgePosition');
-      if (bp) bp.value = r.data.viewer_badge_position === 'inline' ? 'inline' : 'corner';
-      const bb = document.getElementById('cfgBadgeBg');
-      if (bb && /^#[0-9a-f]{6}$/i.test(r.data.viewer_badge_bg || '')) bb.value = r.data.viewer_badge_bg;
-      const bc = document.getElementById('cfgBadgeColor');
-      if (bc && /^#[0-9a-f]{6}$/i.test(r.data.viewer_badge_color || '')) bc.value = r.data.viewer_badge_color;
-      paintBadgePreview();
-    }
-
-    // Badge preview (v0.33.249+): mirrors the viewer page's badge look.
-    function paintBadgePreview() {
-      const chip = document.getElementById('badgePreviewChip');
-      const name = document.getElementById('badgePreviewName');
-      if (!chip || !name) return;
-      const show = document.getElementById('cfgViewerShowBadges').checked;
-      const corner = document.getElementById('cfgBadgePosition').value !== 'inline';
-      chip.style.background = document.getElementById('cfgBadgeBg').value;
-      chip.style.color = document.getElementById('cfgBadgeColor').value;
-      chip.style.display = show ? 'inline-block' : 'none';
-      chip.style.position = corner ? 'absolute' : 'static';
-      chip.style.top = corner ? '6px' : '';
-      chip.style.right = corner ? '8px' : '';
-      chip.style.marginLeft = corner ? '0' : '0.4em';
-      chip.style.verticalAlign = 'middle';
-      if (corner) document.getElementById('badgePreview').insertBefore(chip, name);
-      else name.appendChild(chip);
     }
 
     async function saveCategoryDisplayOptions() {
-      paintBadgePreview();
       const label = document.getElementById('cfgUncategorizedLabel').value.trim() || 'Other';
       await api('/config', { method: 'PUT', body: JSON.stringify({
         viewer_show_categories: document.getElementById('cfgViewerShowCategories').checked ? 1 : 0,
         uncategorized_label: label,
-        viewer_show_badges: document.getElementById('cfgViewerShowBadges').checked ? 1 : 0,
-        viewer_badge_position: document.getElementById('cfgBadgePosition').value,
-        viewer_badge_bg: document.getElementById('cfgBadgeBg').value,
-        viewer_badge_color: document.getElementById('cfgBadgeColor').value,
-        viewer_dim_queued: document.getElementById('cfgViewerDimQueued').checked ? 1 : 0,
       }) });
     }
 
@@ -6608,8 +6392,6 @@
         tbody.appendChild(buildSequenceRow(seq));
       });
       applySeqFilter();
-      renderSeqDuplicatesNote();
-      refreshBulkBadgeSelect();
       // Drop selection entries for sequences that no longer exist (deleted
       // out from under us) so the toolbar count reflects reality.
       const liveIds = new Set(r.data.map(s => s.id));
@@ -6622,22 +6404,6 @@
       // toolbar should hide).
       updateBulkToolbar();
       syncSelectAllState();
-    }
-
-    // Songs listed more than once in the synced playlist (v0.33.249+).
-    async function renderSeqDuplicatesNote() {
-      const el = document.getElementById('seqDuplicatesNote');
-      if (!el) return;
-      const r = await api('/plugin-status');
-      const dups = (r.ok && Array.isArray(r.data.lastSyncDuplicates)) ? r.data.lastSyncDuplicates : [];
-      if (!dups.length) { el.style.display = 'none'; el.textContent = ''; return; }
-      const list = dups.map(d => '<li><strong>' + escapeHtml(d.name) + '</strong> — positions ' +
-        d.positions.map(n => escapeHtml(String(n))).join(', ') + '</li>').join('');
-      el.innerHTML = '<strong>' + (dups.length === 1 ? 'A song is' : dups.length + ' songs are') +
-        ' listed more than once in your playlist' + (r.data.lastSyncPlaylist ? ' "' + escapeHtml(r.data.lastSyncPlaylist) + '"' : '') +
-        '.</strong> ShowPilot shows each song once, and requests and vote winners play the first copy.' +
-        '<ul style="margin: 0.35rem 0 0; padding-left: 1.2rem;">' + list + '</ul>';
-      el.style.display = '';
     }
 
     function buildSequenceRow(seq) {
@@ -6670,7 +6436,6 @@
         <td class="col-artist"><span class="editable" contenteditable="true" title="${escapeAttr(seq.artist || '')}"
                   onblur="updateSeqField(${seq.id}, 'artist', this.innerText)">${escapeHtml(seq.artist || '')}</span></td>
         <td class="col-category"><div class="seq-cat-wrap"><select class="seq-category-select" style="padding: 0.3rem 0.4rem; font-size: 0.85rem;" title="${escapeAttr(seq.category || '')}"></select>${seq.category ? '<button class="secondary seq-cat-filter" title="Show only this category" aria-label="Filter by this category">' + SEQ_ICONS.filter + '</button>' : ''}</div></td>
-        <td class="col-badge"><select class="seq-badge-select" style="padding: 0.3rem 0.4rem; font-size: 0.85rem;" title="${escapeAttr(seq.badge || '')}"></select></td>
         <td class="col-tight col-visible"><label class="toggle" style="transform:scale(0.7);"><input type="checkbox" ${seq.visible ? 'checked' : ''} onchange="updateSeqField(${seq.id}, 'visible', this.checked ? 1 : 0)" /><span class="slider"></span></label></td>
         <td class="col-tight col-vote"><label class="toggle" style="transform:scale(0.7);"><input type="checkbox" ${seq.votable ? 'checked' : ''} onchange="updateSeqField(${seq.id}, 'votable', this.checked ? 1 : 0)" /><span class="slider"></span></label></td>
         <td class="col-tight col-jukebox"><label class="toggle" style="transform:scale(0.7);"><input type="checkbox" ${seq.jukeboxable ? 'checked' : ''} onchange="updateSeqField(${seq.id}, 'jukeboxable', this.checked ? 1 : 0)" /><span class="slider"></span></label></td>
@@ -6697,11 +6462,6 @@
       if (catSel) {
         fillCategorySelect(catSel, seq.category || '', '— none —');
         catSel.addEventListener('change', () => onSeqCategoryChange(seq.id, catSel));
-      }
-      const badgeSel = tr.querySelector('.seq-badge-select');
-      if (badgeSel) {
-        fillBadgeSelect(badgeSel, seq.badge || '', '—');
-        badgeSel.addEventListener('change', () => onSeqBadgeChange(seq.id, badgeSel));
       }
       orderSeqCells(tr);
       const catFilterBtn = tr.querySelector('.seq-cat-filter');
@@ -6803,7 +6563,6 @@
       { key: 'index', label: 'Playlist # (position in the playlist)', defaultHidden: true },
       { key: 'artist', label: 'Artist' },
       { key: 'category', label: 'Category' },
-      { key: 'badge', label: 'Badge (New, Fan Favorite...)' },
       { key: 'visible', label: 'Visible' },
       { key: 'vote', label: 'Vote' },
       { key: 'jukebox', label: 'Jukebox' },
@@ -8177,30 +7936,14 @@
     let selectedTplId = null;
     let loadedContent = '';
 
-    let _monacoInitPromise = null;
-    // The code the editor should show for the selected template. Kept here
-    // because the editor can be created after the template was loaded (when
-    // Monaco's loader wasn't ready yet), and it then has to start with this
-    // instead of empty (GitHub #35: blank code editor until you left the page
-    // and came back).
-    let _editorCode = '';
     function initMonacoIfNeeded() {
       if (monacoEditor) return Promise.resolve();
-      // `monacoEditor` is only assigned once the async require() below
-      // resolves. Several call sites (tab switch, PDF export, etc.) can
-      // each fire before that happens, and each would otherwise pass the
-      // guard above and re-issue require(['vs/editor/editor.main']),
-      // which is what produces AMD's "Duplicate definition of module"
-      // warning — harmless-looking but wasteful and a source of subtle
-      // double-init bugs. Caching the in-flight promise makes every
-      // caller await the same single load.
-      if (_monacoInitPromise) return _monacoInitPromise;
-      _monacoInitPromise = new Promise((resolve) => {
-        if (typeof require === 'undefined' || typeof require.config !== 'function') { _monacoInitPromise = null; return resolve(); }
+      return new Promise((resolve) => {
+        if (typeof require === 'undefined') return resolve();
         require.config({ paths: { vs: '/vendor/monaco/vs' } });
         require(['vs/editor/editor.main'], () => {
           monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
-            value: _editorCode,
+            value: '',
             language: 'html',
             theme: (localStorage.getItem('showpilot_theme') === 'stage-light') ? 'vs' : 'vs-dark',
             automaticLayout: true,
@@ -8218,64 +7961,7 @@
           resolve();
         });
       });
-      return _monacoInitPromise;
     }
-
-    // ---- Server log (v0.33.249+) ----
-    async function loadServerLog() {
-      const view = document.getElementById('serverLogView');
-      if (!view) return;
-      const filter = (document.getElementById('serverLogFilter') || {}).value || '';
-      const r = await api('/server-log?lines=400&filter=' + encodeURIComponent(filter));
-      if (!r.ok) { view.textContent = 'Could not load the log.'; return; }
-      view.textContent = r.data.lines.length ? r.data.lines.join('\n') : (filter ? 'No lines contain "' + filter + '".' : 'Nothing logged yet.');
-      view.scrollTop = view.scrollHeight;
-    }
-
-    // ---- Global CSS (v0.33.249+, GitHub #36) ----
-    async function loadGlobalCss() {
-      const r = await api('/global-css');
-      if (!r.ok) return;
-      document.getElementById('gcssText').value = r.data.css || '';
-      document.getElementById('gcssEnabled').checked = !!r.data.enabled;
-      document.getElementById('gcssRestoreBtn').disabled = !r.data.hasPrevious;
-      document.getElementById('gcssStatus').textContent = '';
-    }
-    async function saveGlobalCss() {
-      const status = document.getElementById('gcssStatus');
-      const r = await api('/global-css', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ css: document.getElementById('gcssText').value, enabled: document.getElementById('gcssEnabled').checked }),
-      });
-      if (!r.ok) { showAlert(r.data?.error || 'Save failed'); return; }
-      document.getElementById('gcssRestoreBtn').disabled = !r.data.hasPrevious;
-      status.textContent = '✓ Saved. Open viewer pages pick it up on their next load.';
-      if (typeof refreshPreview === 'function') refreshPreview();
-    }
-    async function restoreGlobalCss() {
-      if (!await showConfirm('Go back to the global CSS saved before the last Save? (You can undo this with Restore previous again.)', { okLabel: 'Restore' })) return;
-      const r = await api('/global-css/restore', { method: 'POST' });
-      if (!r.ok) { showAlert(r.data?.error || 'Restore failed'); return; }
-      await loadGlobalCss();
-      document.getElementById('gcssStatus').textContent = '✓ Restored the previous version.';
-    }
-    async function loadGlobalCssFile(input) {
-      const file = input.files && input.files[0];
-      input.value = '';
-      if (!file) return;
-      if (file.size > 512 * 1024) { showAlert('That file is over 512 KB, which is too big for the global CSS.'); return; }
-      try { document.getElementById('gcssText').value = await file.text(); } catch (e) { showAlert('Could not read that file.'); return; }
-      document.getElementById('gcssStatus').textContent = `Loaded "${file.name}". Click Save to use it.`;
-    }
-    // The checkbox saves straight away, so it works as a quick off switch.
-    document.addEventListener('change', async (e) => {
-      if (!e.target || e.target.id !== 'gcssEnabled') return;
-      const r = await api('/global-css', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: e.target.checked }),
-      });
-      document.getElementById('gcssStatus').textContent = r.ok ? (e.target.checked ? '✓ Global CSS on.' : '✓ Global CSS off.') : 'Could not save.';
-    });
 
     // ---- Scheduled template switches (v0.33.231+) ----
     let _schEditId = null, _schData = null;
@@ -8420,13 +8106,9 @@
       // they switch tabs. Monaco gets the latest html (draft if pending).
       loadSettingsForm(currentSettings);
       renderBlocksCanvas();
-      _editorCode = tpl.draft_html || tpl.html || '';
-      // A draft saved earlier (even in another browser) shows as unsaved,
-      // with Save Changes / Discard Changes, instead of "SAVED".
-      hasDraft = !!tpl.draft_html;
       await initMonacoIfNeeded();
       if (monacoEditor) {
-        const codeContent = _editorCode;
+        const codeContent = tpl.draft_html || tpl.html || '';
         if (monacoEditor.getValue() !== codeContent) {
           // Suppress the change handler so loading a template doesn't
           // immediately flip hasDraft to true. The dirty flag should only
@@ -8560,27 +8242,6 @@
     //   - Lock button reads "Unlock" with closed padlock
     //   - Monaco's read-only mode is enabled
     // When unlocked, all of those are reversed.
-    // "Load from file…" (v0.33.249+, GitHub #36): puts an .html file's text in
-    // the Code editor as an unsaved draft, the same as pasting it in. Nothing
-    // goes live until Save Changes.
-    async function loadTemplateFromFile(input) {
-      const file = input.files && input.files[0];
-      input.value = '';
-      if (!file || selectedTplId === null) return;
-      if (_isLocked) { showAlert('This template is locked. Unlock it first.'); return; }
-      if (file.size > 2 * 1024 * 1024) { showAlert('That file is over 2 MB, which is too big for a viewer page.'); return; }
-      let text;
-      try { text = await file.text(); } catch (e) { showAlert('Could not read that file.'); return; }
-      if (text.indexOf('\u0000') !== -1) { showAlert("That doesn't look like an HTML file."); return; }
-      if (!await showConfirm(`Replace this template's code with "${file.name}"? It becomes an unsaved draft: check the preview, then Save Changes to make it live, or Discard Changes to undo.`, { okLabel: 'Replace' })) return;
-      switchDesignerTab('code');
-      await initMonacoIfNeeded();
-      if (!monacoEditor) { showAlert('The code editor did not load.'); return; }
-      // A real edit: marks the draft dirty and saves it like typing would.
-      monacoEditor.setValue(text);
-      setTimeout(() => monacoEditor.layout(), 0);
-    }
-
     function applyLockUI(locked) {
       _isLocked = !!locked;
       const banner = document.getElementById('tplLockedBanner');
@@ -8979,7 +8640,6 @@
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        if (typeof r.data?.html === 'string') _editorCode = r.data.html;
         // Mirror the generated HTML into Monaco so switching to Code tab
         // shows what Settings/Blocks produced. Skip if user is currently
         // typing in Code (to avoid clobbering their cursor position).
@@ -8994,56 +8654,12 @@
       }
     }
 
-    // The preview runs the template's own scripts in this page's thread, so a
-    // script that hangs freezes the whole admin (v0.33.249+):
-    //   - The preview only loads while the Viewer Page section is open
-    //     (opening it calls refreshPreview). Before, it loaded on every admin
-    //     start, so a broken draft froze the admin before you could reach
-    //     "Discard Changes".
-    //   - A marker is set before each load and cleared 5 s after it finishes.
-    //     If the page froze, the marker survives the reload and the preview
-    //     is paused with options to discard the draft or load it anyway.
-    const PREVIEW_GUARD_KEY = 'sp_preview_loading';
-    // Which page load set the marker: a marker from this same visit only
-    // means a preview is still loading (the preview is often reloaded twice
-    // in a row on opening), not that an earlier visit froze.
-    const PREVIEW_VISIT = Date.now() + '-' + Math.random().toString(36).slice(2);
-    // Leaving or reloading the admin normally clears this visit's marker. A
-    // frozen page never gets here, so its marker survives for the next visit.
-    window.addEventListener('pagehide', () => {
-      try {
-        const m = JSON.parse(localStorage.getItem(PREVIEW_GUARD_KEY) || 'null');
-        if (m && m.visit === PREVIEW_VISIT) localStorage.removeItem(PREVIEW_GUARD_KEY);
-      } catch (e) {}
-    });
-    function previewPaneOpen() {
-      const pane = document.querySelector('.tab-pane[data-pane="viewer"]');
-      return !!(pane && pane.classList.contains('active'));
-    }
-    function refreshPreview(force) {
+    function refreshPreview() {
       if (selectedTplId === null) return;
       const iframe = document.getElementById('designerPreview');
       if (!iframe) return;
-      if (!previewPaneOpen()) return;
-      const paused = document.getElementById('previewPaused');
-      let stuck = null;
-      try { stuck = JSON.parse(localStorage.getItem(PREVIEW_GUARD_KEY) || 'null'); } catch (e) {}
-      if (force !== true && stuck && stuck.id === selectedTplId && stuck.visit !== PREVIEW_VISIT) {
-        iframe.src = 'about:blank';
-        if (paused) paused.style.display = '';
-        return;
-      }
-      if (paused) paused.style.display = 'none';
-      try { localStorage.setItem(PREVIEW_GUARD_KEY, JSON.stringify({ id: selectedTplId, at: Date.now(), visit: PREVIEW_VISIT })); } catch (e) {}
-      const tok = Date.now();
-      iframe.onload = () => setTimeout(() => {
-        // Only the latest load clears the marker.
-        if (iframe.dataset.loadTok !== String(tok)) return;
-        try { localStorage.removeItem(PREVIEW_GUARD_KEY); } catch (e) {}
-      }, 5000);
-      iframe.dataset.loadTok = String(tok);
       // Cache-bust the iframe so it actually reloads each time
-      iframe.src = `/?preview=${selectedTplId}&t=${tok}`;
+      iframe.src = `/?preview=${selectedTplId}&t=${Date.now()}`;
     }
 
     function updateDraftButtons() {
@@ -9097,7 +8713,6 @@
       if (!await showConfirm('Discard all unsaved changes? The template will revert to its last saved state.', { danger: true, okLabel: 'Discard' })) return;
       const r = await api('/templates/' + selectedTplId + '/discard-draft', { method: 'POST' });
       if (r.ok) {
-        try { localStorage.removeItem(PREVIEW_GUARD_KEY); } catch (e) {}
         hasDraft = false;
         updateDraftButtons();
         await selectTemplate(selectedTplId);  // reload from saved state
@@ -9141,45 +8756,10 @@
     // ============================================================
     // PLUGIN STATUS PANEL
     // ============================================================
-    // Banner on the Dashboard when the show player is out of date (beta.18+).
-    // "Dismiss" hides it until a newer version comes out; a version too old
-    // to work properly can't be dismissed.
-    function renderShowPlayerUpdate(u) {
-      const el = document.getElementById('showPlayerUpdateBanner');
-      if (!el) return;
-      let dismissed = '';
-      try { dismissed = localStorage.getItem('sp_player_update_dismissed') || ''; } catch (e) {}
-      if (!u || (!u.belowRequired && dismissed === u.kind + ':' + u.latest)) { el.style.display = 'none'; el.innerHTML = ''; return; }
-      const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      const danger = !!u.belowRequired;
-      el.style.borderColor = danger ? 'var(--status-danger)' : 'var(--status-warning)';
-      el.style.background = danger ? 'var(--status-danger-soft)' : 'var(--status-warning-soft)';
-      let html;
-      if (u.kind === 'fpp') {
-        const fpp = u.fppHost ? '<a href="http://' + esc(u.fppHost) + '/plugins.php" target="_blank" rel="noopener">FPP → Content Setup → Plugin Manager</a>' : 'FPP → Content Setup → Plugin Manager';
-        html = '<b>' + (danger ? '⚠ Your ShowPilot plugin in FPP needs updating.' : '⬆ An update for the ShowPilot plugin in FPP is available.') + '</b> '
-          + 'Installed: v' + esc(u.installed) + ' · Newest: v' + esc(u.latest) + '.'
-          + (danger && u.why ? ' This version of ShowPilot-Lite needs v' + esc(u.required) + ' or newer: ' + esc(u.why) + '.' : '')
-          + '<br>Update it in ' + fpp + ' (the ShowPilot plugin\'s update button), then restart FPPD if FPP asks.';
-      } else {
-        html = '<b>⬆ An update for your show player is available.</b> Installed: v' + esc(u.installed) + ' · Newest: v' + esc(u.latest) + '.'
-          + '<br>Update it from the show player\'s own admin page.';
-      }
-      if (!danger) html += ' <button type="button" class="secondary" style="margin-left: 0.5rem; padding: 0.15rem 0.6rem; font-size: 0.8rem;" onclick="dismissShowPlayerUpdate(\'' + esc(u.kind + ':' + u.latest) + '\')">Dismiss</button>';
-      if (el.innerHTML !== html) el.innerHTML = html;
-      el.style.display = '';
-    }
-    function dismissShowPlayerUpdate(key) {
-      try { localStorage.setItem('sp_player_update_dismissed', key); } catch (e) {}
-      const el = document.getElementById('showPlayerUpdateBanner');
-      if (el) el.style.display = 'none';
-    }
-
     async function loadPluginStatus() {
       const r = await api('/plugin-status');
       if (!r.ok) return;
       const d = r.data;
-      renderShowPlayerUpdate(d.update);
       const dot = document.getElementById('headerPluginDot');
       const text = document.getElementById('headerPluginText');
       const conn = document.getElementById('pluginConnStatus');
@@ -9227,11 +8807,10 @@
     // STATUS STRIP / DASHBOARD live values
     // Hook into existing loadStats + loadConfig pathways
     // ============================================================
-    function modeText(mode) { return mode === 'LISTEN' ? 'LISTEN ONLY' : (mode || 'OFF'); }
     function updateModePill(mode) {
       const pill = document.getElementById('modePill');
       pill.className = 'mode-pill ' + (mode || 'off').toLowerCase();
-      pill.textContent = modeText(mode);
+      pill.textContent = mode || 'OFF';
     }
 
     // Override updateViewerControlBadge to use the new pill classes
@@ -9244,7 +8823,7 @@
         badge.className = 'pill pill-danger';
         setVcToggle(btn, false);
       } else {
-        badge.textContent = 'ON · ' + modeText(mode);
+        badge.textContent = 'ON · ' + mode;
         badge.className = 'pill pill-success';
         setVcToggle(btn, true);
       }
@@ -9268,7 +8847,7 @@
           setVcToggle(btn, false);
         } else {
           badge.className = 'pill pill-success';
-          badge.textContent = 'ON · ' + modeText(mode);
+          badge.textContent = 'ON · ' + mode;
           setVcToggle(btn, true);
         }
         // Show Reset Race button only in RACE mode
@@ -9320,7 +8899,18 @@
       document.getElementById('dashNextUp').textContent = nextDisplay;
 
       // Top sequences table
-      renderTopSequences(d);
+      const tbody = document.getElementById('topBody');
+      tbody.innerHTML = '';
+      const top = d.topSequences || [];
+      if (top.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="muted">No plays yet</td></tr>';
+      } else {
+        top.forEach(s => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${escapeHtml(s.sequence_name)}</td><td>${s.plays}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
 
       // Total sequences count (only after sequences are loaded)
       const seqCountEl = document.getElementById('sequenceCount');
@@ -9362,13 +8952,9 @@
     async function loadQueueTab() {
       const r = await api('/queue');
       if (!r.ok) return;
-      const { pending, recentlyPlayed, recentMode } = r.data;
+      const { pending, recentlyPlayed } = r.data;
       renderQueueList('queuePending', pending, true);
       renderQueueList('queueRecent', recentlyPlayed, false);
-      // Jukebox lists played requests; other modes list every song played.
-      const recentTitle = document.getElementById('queueRecentTitle');
-      if (recentTitle) recentTitle.textContent = recentMode === 'plays'
-        ? 'Recently played (last 20)' : 'Recently played requests (last 20)';
 
       // Start a poll loop that runs while the queue tab is the active tab.
       // Sockets should refresh us on real changes, but polling every 4s is a
@@ -9393,19 +8979,14 @@
         return;
       }
       el.innerHTML = entries.map(q => {
-        // Handed over = in the show player's own queue, waiting its turn. The
-        // song that is playing has already moved to "Recently played", so
-        // nothing in this list is playing (before v0.33.249 every handed-over
-        // song said "Playing now", GitHub #37).
         const isPlaying = allowDelete && q.handed_off_at;
         const cover = q.image_url
           ? `<img src="${escapeAttr(q.image_url)}" style="width: 36px; height: 36px; border-radius: 4px; object-fit: cover; flex-shrink: 0;" alt="" />`
           : `<div style="width: 36px; height: 36px; border-radius: 4px; background: var(--bg-tertiary); flex-shrink: 0;"></div>`;
-        const sourceLabel = { vote: 'vote winner', request: 'request', psa: 'PSA', schedule: 'show schedule' }[q.source] || '';
         const subtitle = isPlaying
-          ? `<span style="color: var(--status-success); font-weight: 600;" title="ShowPilot has passed this request to the show player, which plays it in turn">Sent to the show player</span> · requested ${formatRelative(q.requested_at)}`
+          ? '<span style="color: var(--status-success); font-weight: 600;">▶ Playing now</span>'
           : (q.played_at
-              ? `played ${formatRelative(q.played_at)}${sourceLabel ? ' · ' + sourceLabel : ''}`
+              ? `played ${formatRelative(q.played_at)}`
               : `requested ${formatRelative(q.requested_at)}`);
         const removeBtn = (allowDelete && !isPlaying)
           ? `<button class="secondary" onclick="removeQueueEntry(${q.id})" style="font-size: 0.75rem; padding: 4px 10px;">Remove</button>`
@@ -9441,8 +9022,8 @@
     }
 
     async function clearAllQueue() {
-      if (!await showConfirm('Clear the queue?\nAll requests that haven\'t played yet will be removed. Recently played stays.\nThis cannot be undone.', { danger: true, okLabel: 'Clear' })) return;
-      const r = await api('/purge-queue', { method: 'POST' });
+      if (!await showConfirm('Clear the entire queue?\nAll pending requests will be removed.\nThis cannot be undone.', { danger: true, okLabel: 'Clear' })) return;
+      const r = await api('/stats/reset/queue', { method: 'POST' });
       if (r.ok) loadQueueTab();
     }
 

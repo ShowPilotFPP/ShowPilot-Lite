@@ -195,14 +195,7 @@
     document.body.appendChild(backdrop);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(true); });
     const count = document.getElementById('headerViewerCount');
-    if (count) {
-      const chip = el('<span class="spn-chip"></span>');
-      chip.appendChild(count);
-      // Phones listening (ShowPilot only; Lite has no phone audio).
-      const listening = document.getElementById('headerListenerWrap');
-      if (listening) chip.appendChild(listening);
-      top.appendChild(chip);
-    }
+    if (count) { const chip = el('<span class="spn-chip"></span>'); chip.appendChild(count); top.appendChild(chip); }
     const show = document.querySelector('.app-header .header-show-btn[href]');
     if (show) top.appendChild(show);
     const theme = document.getElementById('themeSelect');
@@ -307,7 +300,7 @@
           '<div class="spn-next"><span class="spn-muted">Up next</span><b id="spnNext">—</b><span class="spn-pill" id="spnNextSrc" hidden></span></div>' +
         '</section>' +
         '<section class="spn-stats" aria-label="Show numbers">' +
-          '<div class="spn-stat"><span class="spn-muted">Watching now</span><span class="v" id="spnS1">0</span><small id="spnS1H">on the viewer page</small></div>' +
+          '<div class="spn-stat"><span class="spn-muted">Watching now</span><span class="v" id="spnS1">0</span><small>on the viewer page</small></div>' +
           '<div class="spn-stat"><span class="spn-muted" id="spnS2L">Votes this round</span><span class="v" id="spnS2">0</span><small id="spnS2H">for the next song</small></div>' +
           '<div class="spn-stat"><span class="spn-muted">Played by viewers</span><span class="v" id="spnS3">0</span><small>votes and requests, all time</small></div>' +
           '<div class="spn-stat"><span class="spn-muted">Sequences</span><span class="v" id="spnS4">0</span><small>on the viewer page</small></div>' +
@@ -315,17 +308,14 @@
       '</div>' +
       '<div class="spn-row">' +
         '<section class="spn-panel" aria-labelledby="spnLiveT"><div class="spn-head"><h2 id="spnLiveT">Live vote</h2><span class="spn-muted" id="spnLiveS"></span></div><div id="spnLive"></div></section>' +
-        '<section class="spn-panel" aria-labelledby="spnTopT"><div class="spn-head"><h2 id="spnTopT">Top sequences</h2><span class="spn-muted">all time</span><label class="spn-muted" style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="spnTopHidePsa"> Hide PSAs</label></div><ol class="spn-top-list" id="spnTop"></ol></section>' +
+        '<section class="spn-panel" aria-labelledby="spnTopT"><div class="spn-head"><h2 id="spnTopT">Top sequences</h2><span class="spn-muted">all time</span></div><ol class="spn-top-list" id="spnTop"></ol></section>' +
       '</div>' +
       '</div>'), pane.firstChild);
 
     document.getElementById('spnVc').addEventListener('click', () => window.toggleViewerControl());
-    // The out-of-date show player banner (beta.18+) stays visible, above the new dashboard.
-    const upd = document.getElementById('showPlayerUpdateBanner');
-    if (upd) pane.insertBefore(upd, pane.firstChild);
   }
 
-  const MODES = [['OFF', 'Off'], ['VOTING', 'Voting'], ['JUKEBOX', 'Jukebox'], ['RACE', 'Race'], ['LISTEN', 'Listen only']];
+  const MODES = [['OFF', 'Off'], ['VOTING', 'Voting'], ['JUKEBOX', 'Jukebox'], ['RACE', 'Race']];
   function renderDash() {
     const $ = (id) => document.getElementById(id);
     if (!$('spnDash')) return;
@@ -354,24 +344,13 @@
     paintProgress();
 
     $('spnS1').textContent = dashStats.activeViewers ?? 0;
-    $('spnS1H').textContent = 'on the viewer page' + (dashStats.listenersNow ? ' · ' + dashStats.listenersNow + ' listening on phones' : '');
     if (mode === 'JUKEBOX') { $('spnS2L').textContent = 'Requests waiting'; $('spnS2').textContent = dashStats.queueLength ?? 0; $('spnS2H').textContent = 'in the jukebox queue'; }
     else { $('spnS2L').textContent = 'Votes this round'; $('spnS2').textContent = dashStats.totalVotes ?? 0; $('spnS2H').textContent = 'for the next song'; }
     $('spnS3').textContent = dashStats.totalPlays ?? 0;
     $('spnS4').textContent = ((dashState && dashState.sequences) || []).length;
-    // "Hide PSAs" — same saved choice as the classic layout's box (sp_top_hide_psa).
-    let hidePsa = false;
-    try { hidePsa = localStorage.getItem('sp_top_hide_psa') === '1'; } catch (e) {}
-    const hideBox = $('spnTopHidePsa');
-    hideBox.checked = hidePsa;
-    hideBox.onchange = () => {
-      try { localStorage.setItem('sp_top_hide_psa', hideBox.checked ? '1' : '0'); } catch (e) {}
-      if (typeof window.toggleTopHidePsa === 'function') window.toggleTopHidePsa(hideBox.checked);
-      renderDash();
-    };
-    const top = (hidePsa ? dashStats.topSequencesNoPsa : dashStats.topSequences) || [];
+    const top = dashStats.topSequences || [];
     $('spnTop').innerHTML = top.length ? top.slice(0, 6).map((s, i) => '<li><span class="n">' + (i + 1) + '</span><span>' + esc(seqInfo(s.sequence_name).title) + '</span><span class="p">' + s.plays + '</span></li>').join('')
-      : '<li class="spn-muted">' + (hidePsa ? 'No songs other than PSAs played by viewers yet.' : 'No songs played by viewers yet.') + '</li>';
+      : '<li class="spn-muted">No songs played by viewers yet.</li>';
 
     const live = $('spnLive');
     const bars = (rows) => {
@@ -389,13 +368,10 @@
       $('spnLiveT').textContent = 'Live vote'; $('spnLiveS').textContent = rows.length ? 'Round closes when the current song ends' : '';
       live.innerHTML = rows.length ? bars(rows) : '<div class="spn-empty"><strong>No votes yet this round.</strong><span class="spn-muted">Votes show up here the moment viewers cast them.</span></div>';
     } else if (mode === 'JUKEBOX') {
-      // Every request that hasn't played, including those already handed to
-      // the show player (they wait in its queue). Before v0.33.249 those were
-      // left out, so the list emptied while songs were still waiting (#37).
-      const pending = dashQueue.slice();
+      const pending = dashQueue.filter(q => !q.handed_off_at);
       $('spnLiveT').textContent = 'Request queue'; $('spnLiveS').textContent = pending.length ? pending.length + ' waiting' : '';
-      live.innerHTML = pending.length ? pending.map((q, i) => '<div class="spn-q"><span class="spn-muted">' + (i + 1) + '</span><div><div style="font-weight:600">' + esc(q.display_name || q.sequence_name) + '</div><div class="spn-muted" style="font-size:13px">' + esc(q.artist || '') + (q.handed_off_at ? (q.artist ? ' · ' : '') + 'sent to the show player' : '') + '</div></div><span></span>' +
-        (q.handed_off_at ? '<span></span></div>' : '<button type="button" class="spn-x" data-id="' + esc(q.id) + '" aria-label="Remove ' + esc(q.display_name || q.sequence_name) + ' from the queue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>')).join('')
+      live.innerHTML = pending.length ? pending.map((q, i) => '<div class="spn-q"><span class="spn-muted">' + (i + 1) + '</span><div><div style="font-weight:600">' + esc(q.display_name || q.sequence_name) + '</div><div class="spn-muted" style="font-size:13px">' + esc(q.artist || '') + '</div></div><span></span>' +
+        '<button type="button" class="spn-x" data-id="' + esc(q.id) + '" aria-label="Remove ' + esc(q.display_name || q.sequence_name) + ' from the queue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>').join('')
         : '<div class="spn-empty"><strong>The queue is empty.</strong><span class="spn-muted">Requests from viewers appear here in the order they will play.</span></div>';
       live.querySelectorAll('.spn-x').forEach(b => b.addEventListener('click', async () => { await window.removeQueueEntry(Number(b.dataset.id)); refreshDash(); }));
     } else {

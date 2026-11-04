@@ -1854,7 +1854,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.91</span>
+        <span class="app-version">v0.5.92</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -2286,6 +2286,28 @@
           <div class="row">
             <input type="checkbox" id="cfg_visitor_messages_enabled" onchange="saveSetting('visitor_messages_enabled', this.checked ? 1 : 0)" />
             <label for="cfg_visitor_messages_enabled" style="margin: 0;">Accept messages from visitors</label>
+          </div>
+          <div style="margin: 0.9rem 0 0.25rem;">
+            <div class="row" style="justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.5rem;">
+              <div>
+                <label for="cfg_visitor_messages_accent">Accent color</label>
+                <div class="row" style="gap: 0.5rem; align-items: center; margin: 0;">
+                  <input type="color" id="cfg_visitor_messages_accent" onchange="saveMessageAccent(this.value)"
+                         style="width: 44px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 4px;" />
+                  <button type="button" class="secondary" onclick="saveMessageAccent('')" style="font-size: 0.85rem;">Use default</button>
+                </div>
+              </div>
+              <div class="row" style="gap: 0.4rem; margin: 0;" role="group" aria-label="Preview background">
+                <button type="button" class="secondary" id="msgPreviewDark" onclick="setMessagePreviewBg('dark')" style="font-size: 0.8rem;">Dark page</button>
+                <button type="button" class="secondary" id="msgPreviewLight" onclick="setMessagePreviewBg('light')" style="font-size: 0.8rem;">Light page</button>
+              </div>
+            </div>
+            <div class="muted" style="font-size: 0.78rem; margin-bottom: 0.4rem;">Preview (how visitors will see the box; try typing in it):</div>
+            <iframe id="msgPreview" title="Message box preview" style="width: 100%; height: 400px; border: 1px solid var(--border); border-radius: 8px; display: block; background: #0b1020;"></iframe>
+            <p class="muted" style="font-size: 0.78rem; margin: 0.4rem 0 0;">
+              The box keeps its own dark card on any template. Template authors can restyle it with CSS (<code>.sp-message-box</code>) or the variables
+              <code>--sp-message-accent</code>, <code>--sp-message-bg</code>, <code>--sp-message-text</code> and <code>--sp-message-field-bg</code>.
+            </p>
           </div>
           <div class="grid-2" style="margin: 0.75rem 0;">
             <div>
@@ -4041,7 +4063,7 @@
       }
       // Refresh data when switching to these tabs
       if (name === 'queue') loadQueueTab();
-      if (name === 'messages') loadMessagesTab();
+      if (name === 'messages') { loadMessagesTab(); refreshMessagePreview(); }
       if (name === 'stats') { loadStatsTab(); loadVisitorStats(); }
       if (name === 'sequences') loadSnapshots();
       if (name === 'users') loadUsers();
@@ -5404,6 +5426,10 @@
       setVal('cfg_visitor_messages_cooldown_minutes', c.visitor_messages_cooldown_minutes ?? 2);
       setVal('cfg_visitor_messages_nightly_limit', c.visitor_messages_nightly_limit ?? 5);
       setChk('cfg_visitor_messages_filter_enabled', c.visitor_messages_filter_enabled !== 0);
+      msgPreviewAccent = /^#[0-9a-f]{6}$/i.test(c.visitor_messages_accent || '') ? c.visitor_messages_accent : '';
+      setVal('cfg_visitor_messages_accent', msgPreviewAccent || '#e11d48');
+      msgPreviewMax = Number(c.visitor_messages_max_length) || 280;
+      if (document.querySelector('.tab-pane[data-pane="messages"].active')) refreshMessagePreview();
       (async () => {
         const ta = document.getElementById('cfg_visitor_messages_filter_words');
         if (!ta || document.activeElement === ta) return;
@@ -9529,6 +9555,28 @@
     }
     function exportMessages() {
       window.location.href = '/api/admin/messages/export';
+    }
+    // Message box look (accent + live preview).
+    let msgPreviewBg = 'dark', msgPreviewAccent = '', msgPreviewMax = 280;
+    function refreshMessagePreview() {
+      const f = document.getElementById('msgPreview');
+      if (!f) return;
+      const qs = new URLSearchParams({ bg: msgPreviewBg, max: String(msgPreviewMax) });
+      if (msgPreviewAccent) qs.set('accent', msgPreviewAccent);
+      const src = '/api/admin/messages/preview?' + qs.toString();
+      if (f.getAttribute('src') !== src) f.setAttribute('src', src);
+      const d = document.getElementById('msgPreviewDark'), l = document.getElementById('msgPreviewLight');
+      if (d) d.style.fontWeight = msgPreviewBg === 'dark' ? '700' : '';
+      if (l) l.style.fontWeight = msgPreviewBg === 'light' ? '700' : '';
+    }
+    function setMessagePreviewBg(bg) { msgPreviewBg = bg === 'light' ? 'light' : 'dark'; refreshMessagePreview(); }
+    async function saveMessageAccent(value) {
+      const v = /^#[0-9a-f]{6}$/i.test(value || '') ? value : '';
+      msgPreviewAccent = v;
+      const el = document.getElementById('cfg_visitor_messages_accent');
+      if (el && !v) el.value = '#e11d48';
+      refreshMessagePreview();
+      await saveSetting('visitor_messages_accent', v);
     }
     async function saveMessageWords() {
       const ta = document.getElementById('cfg_visitor_messages_filter_words');

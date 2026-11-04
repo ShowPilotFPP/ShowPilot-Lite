@@ -318,9 +318,19 @@
       if (open) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
     });
     const max = Number(m.maxLength) || 280;
+    const hex = /^#[0-9a-f]{6}$/i;
     document.querySelectorAll('form[data-showpilot-message-box]').forEach(form => {
       const ta = form.querySelector('.sp-message-text');
       if (ta && String(ta.maxLength) !== String(max)) { ta.maxLength = max; updateMessageCount(form); }
+      // Admin accent color: set on the form only when chosen, so a template's
+      // own --sp-message-accent applies otherwise.
+      if (m.customAccent && hex.test(m.accent || '') && hex.test(m.accentText || '')) {
+        form.style.setProperty('--sp-message-accent', m.accent);
+        form.style.setProperty('--sp-message-accent-text', m.accentText);
+      } else if ('customAccent' in m) {
+        form.style.removeProperty('--sp-message-accent');
+        form.style.removeProperty('--sp-message-accent-text');
+      }
     });
   }
   function updateMessageCount(form) {
@@ -329,6 +339,7 @@
     if (!ta || !cnt) return;
     const max = ta.maxLength > 0 ? ta.maxLength : ((messagesCfg && messagesCfg.maxLength) || 280);
     cnt.textContent = ta.value.length + '/' + max;
+    if (ta.value.length >= max * 0.9) cnt.setAttribute('data-near', ''); else cnt.removeAttribute('data-near');
   }
   function setMessageStatus(form, text, kind) {
     const st = form.querySelector('.sp-message-status');
@@ -363,6 +374,9 @@
         if (ta) ta.value = '';
         updateMessageCount(form);
         setMessageStatus(form, 'Thanks! Your message was sent to the show.', 'ok');
+        form.classList.remove('sp-message-sent');
+        void form.offsetWidth; // restart the animation
+        form.classList.add('sp-message-sent');
         showTemplateMessage('messageSent');
         return;
       }

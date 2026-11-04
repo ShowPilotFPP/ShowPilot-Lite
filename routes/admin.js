@@ -326,6 +326,7 @@ router.put('/config', requireAdmin, (req, res) => {
     'visitor_messages_nightly_limit',
     'visitor_messages_filter_enabled',
     'visitor_messages_filter_words',
+    'visitor_messages_accent',
   ];
   const updates = {};
   for (const k of allowed) {
@@ -809,6 +810,28 @@ router.get('/messages/export', requireAdmin, (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="visitor-messages-${new Date().toISOString().slice(0, 10)}.csv"`);
   res.send('\uFEFF' + csv);
+});
+// Live preview of the message box for the admin (same markup and CSS as the
+// viewer page). ?accent=%23rrggbb (optional), ?bg=dark|light, ?max=N.
+router.get('/messages/preview', requireAdmin, (req, res) => {
+  const vm = require('../lib/visitor-messages');
+  const accent = /^#[0-9a-f]{6}$/i.test(String(req.query.accent || '')) ? String(req.query.accent).toLowerCase() : '';
+  const max = Math.min(1000, Math.max(20, parseInt(req.query.max, 10) || 280));
+  const light = req.query.bg === 'light';
+  const state = { open: true, maxLength: max, accent: accent || vm.DEFAULT_ACCENT, customAccent: !!accent };
+  const bg = light
+    ? 'linear-gradient(135deg,#fdf6ec,#f3e7d3)'
+    : 'radial-gradient(ellipse at top,#1d2a4d 0%,#0b1020 70%)';
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<style>html,body{margin:0}body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;' +
+    'font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:' + (light ? '#2b2118' : '#e8eef7') + ';background:' + bg + '}' +
+    vm.BOX_CSS + '</style></head><body>' + vm.boxHtml(state) +
+    '<script>document.querySelector("form").addEventListener("submit",function(e){e.preventDefault();var s=this.querySelector(".sp-message-status");' +
+    's.textContent="Thanks! Your message was sent to the show.";s.setAttribute("data-kind","ok");});' +
+    'document.querySelector("textarea").addEventListener("input",function(){var c=document.querySelector(".sp-message-count");c.textContent=this.value.length+"/"+this.maxLength;' +
+    'if(this.value.length>=this.maxLength*0.9)c.setAttribute("data-near","");else c.removeAttribute("data-near");});</script></body></html>');
 });
 // The built-in word list, for the admin's "Reset to the built-in list" button.
 router.get('/messages/default-words', requireAdmin, (req, res) => {

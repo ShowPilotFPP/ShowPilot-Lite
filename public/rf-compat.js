@@ -251,7 +251,7 @@
       '.sp-progress--edge .sp-progress-time{position:absolute;bottom:calc(100% + 6px);padding:4px 9px;border-radius:999px;' +
         'font-size:12px;background:rgba(10,10,14,.78);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}' +
       '.sp-progress--onplayer{position:absolute;top:0;z-index:3}' +
-      '.sp-progress--onplayer .sp-progress-time{right:12px}' +
+      '.sp-progress--onplayer .sp-progress-time{left:12px}' +
       '.sp-progress--screenbottom{position:fixed;bottom:env(safe-area-inset-bottom,0px);z-index:9990}' +
       '.sp-progress--screenbottom .sp-progress-time{left:10px}' +
       '.sp-progress--no-time .sp-progress-time{display:none}' +

@@ -18,7 +18,7 @@
 | Plugin sync (sequences, status) | ✅ | ✅ |
 | Cover art (MusicBrainz / iTunes) | ✅ | ✅ |
 | Song progress bar on the viewer page | ✅ | ✅ |
-| Private visitor messages to the show (`{MESSAGE_BOX}`) | ✅ | ✅ |
+| Visitor messages to the show (`{MESSAGE_BOX}`), optional message wall (`{MESSAGE_WALL}`) | ✅ | ✅ |
 | Redesigned admin + customizable Cockpit tablet mode | ✅ | ✅ |
 | Public access via Cloudflare Tunnel | ✅ | ✅ |
 | Footprint on FPP's SD card | n/a (runs elsewhere) | Tiny — no audio cache, no audio bytes |

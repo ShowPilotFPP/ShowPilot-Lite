@@ -780,6 +780,8 @@
       transition: color 0.15s, border-color 0.15s;
     }
     .tab-btn:hover { color: var(--text); }
+    /* Unread visitor messages (v0.33.250+) */
+    .tab-btn[data-unread]::after { content: attr(data-unread); display: inline-block; margin-left: 0.4em; min-width: 1.4em; padding: 0 0.35em; border-radius: 0.7em; background: var(--accent); color: var(--accent-text); font-size: 0.72em; font-weight: 700; line-height: 1.4em; text-align: center; vertical-align: middle; }
     .tab-btn.active {
       color: var(--text);
       border-bottom-color: var(--accent);
@@ -1852,7 +1854,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.90</span>
+        <span class="app-version">v0.5.91</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -1911,6 +1913,7 @@
       <button class="tab-btn active" data-tab="dashboard" onclick="switchMainTab('dashboard')">Dashboard</button>
       <button class="tab-btn" data-tab="sequences" onclick="switchMainTab('sequences')">Sequences</button>
       <button class="tab-btn" data-tab="queue" onclick="switchMainTab('queue')">Queue</button>
+      <button class="tab-btn" data-tab="messages" onclick="switchMainTab('messages')">Messages</button>
       <button class="tab-btn" data-tab="stats" onclick="switchMainTab('stats')">Stats</button>
       <button class="tab-btn" data-tab="viewer" onclick="switchMainTab('viewer')">Viewer Page</button>
       <button class="tab-btn" data-tab="settings" onclick="switchMainTab('settings')">Settings</button>
@@ -1928,6 +1931,7 @@
 
         <!-- Out-of-date show player (beta.18+): filled by renderShowPlayerUpdate() -->
         <div id="showPlayerUpdateBanner" role="status" style="display:none; margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--status-warning); background: var(--status-warning-soft); font-size: 0.9rem; line-height: 1.45;"></div>
+        <div id="messagesBanner" class="dash-banner" role="status" style="display:none; margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--accent-soft); font-size: 0.9rem; line-height: 1.45;"></div>
 
         <div class="now-playing-card" style="margin-bottom: 1.25rem;">
           <span class="np-pulse"></span>
@@ -2243,6 +2247,84 @@
 
           <h3 id="queueRecentTitle" style="font-size: 1rem; color: var(--text-muted); margin: 1.5rem 0 0.5rem;">Recently played requests (last 20)</h3>
           <div id="queueRecent" style="display: flex; flex-direction: column; gap: 0.4rem; opacity: 0.85;"></div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           TAB: MESSAGES (visitor messages, v0.33.250+)
+           ============================================================ -->
+      <div class="tab-pane" data-pane="messages">
+        <div class="card">
+          <div class="row" style="justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h2 style="margin: 0;">Visitor messages</h2>
+            <div class="row" style="gap: 0.5rem; margin: 0; flex-wrap: wrap;">
+              <select id="msgFilter" onchange="loadMessagesTab()" aria-label="Show" style="width: auto;">
+                <option value="all">All messages</option>
+                <option value="unread">Unread only</option>
+              </select>
+              <button class="secondary" onclick="loadMessagesTab()">Refresh</button>
+              <button class="secondary" onclick="markAllMessagesRead()">Mark all read</button>
+              <button class="secondary" onclick="exportMessages()">Export CSV</button>
+              <button class="danger" onclick="deleteReadMessages()">Delete read</button>
+            </div>
+          </div>
+          <p class="muted" id="msgSummary" style="font-size: 0.85rem; margin: 0 0 0.75rem;"></p>
+          <div id="msgList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+          <div id="msgMore" style="margin-top: 0.75rem; display: none;">
+            <button class="secondary" onclick="loadMessagesTab(true)">Show more</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Settings</h2>
+          <p class="muted" style="font-size: 0.85rem; margin: 0.25rem 0 0.75rem;">
+            Visitors send a short message from the viewer page. Messages are private: only you see them here, never on the public page.
+            Put <code>{MESSAGE_BOX}</code> in your template where the message box should go; wrap a section in an element with
+            <code>{message-dynamic-container}</code> to show it only while messages are open. Templates can style
+            <code>#messageSent</code>, <code>#messageFailed</code> and <code>#messageTooSoon</code>.
+          </p>
+          <div class="row">
+            <input type="checkbox" id="cfg_visitor_messages_enabled" onchange="saveSetting('visitor_messages_enabled', this.checked ? 1 : 0)" />
+            <label for="cfg_visitor_messages_enabled" style="margin: 0;">Accept messages from visitors</label>
+          </div>
+          <div class="grid-2" style="margin: 0.75rem 0;">
+            <div>
+              <label for="cfg_visitor_messages_when">When</label>
+              <select id="cfg_visitor_messages_when" onchange="saveSetting('visitor_messages_when', this.value)">
+                <option value="show">Only while the show is on</option>
+                <option value="always">Any time</option>
+              </select>
+              <p class="muted" style="font-size: 0.78rem; margin: 0.3rem 0 0;">"While the show is on" means viewer control isn't Off and a song played in the last 15 minutes.</p>
+            </div>
+            <div>
+              <label for="cfg_visitor_messages_max_length">Longest message (characters)</label>
+              <input type="number" id="cfg_visitor_messages_max_length" min="20" max="1000" step="10" onchange="saveSetting('visitor_messages_max_length', this.value)" />
+            </div>
+            <div>
+              <label for="cfg_visitor_messages_cooldown_minutes">Minutes between messages (per visitor)</label>
+              <input type="number" id="cfg_visitor_messages_cooldown_minutes" min="0" max="120" onchange="saveSetting('visitor_messages_cooldown_minutes', this.value)" />
+            </div>
+            <div>
+              <label for="cfg_visitor_messages_nightly_limit">Most messages per visitor per night</label>
+              <input type="number" id="cfg_visitor_messages_nightly_limit" min="0" max="100" onchange="saveSetting('visitor_messages_nightly_limit', this.value)" />
+              <p class="muted" style="font-size: 0.78rem; margin: 0.3rem 0 0;">0 = no limit. A night is the last 12 hours.</p>
+            </div>
+          </div>
+          <p class="muted" style="font-size: 0.78rem; margin: 0 0 0.75rem;">
+            When the access code or "viewer must be at the show" location check is on (Settings), visitors must pass it to send a message too.
+          </p>
+          <div class="row">
+            <input type="checkbox" id="cfg_visitor_messages_filter_enabled" onchange="saveSetting('visitor_messages_filter_enabled', this.checked ? 1 : 0)" />
+            <label for="cfg_visitor_messages_filter_enabled" style="margin: 0;">Hide bad words (replaced with ***)</label>
+          </div>
+          <div style="margin-top: 0.5rem;">
+            <label for="cfg_visitor_messages_filter_words">Words to hide, one per line (end with * to also catch longer words, e.g. <code>fudge*</code>)</label>
+            <textarea id="cfg_visitor_messages_filter_words" rows="6" style="width: 100%; font-family: ui-monospace, monospace; font-size: 0.85rem;" spellcheck="false"></textarea>
+            <div class="row" style="gap: 0.5rem; margin: 0.4rem 0 0;">
+              <button class="secondary" type="button" onclick="saveMessageWords()">Save word list</button>
+              <button class="secondary" type="button" onclick="resetMessageWords()">Reset to the built-in list</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3959,6 +4041,7 @@
       }
       // Refresh data when switching to these tabs
       if (name === 'queue') loadQueueTab();
+      if (name === 'messages') loadMessagesTab();
       if (name === 'stats') { loadStatsTab(); loadVisitorStats(); }
       if (name === 'sequences') loadSnapshots();
       if (name === 'users') loadUsers();
@@ -5314,6 +5397,23 @@
       setVal('cfg_viewer_progress_bar_position', c.viewer_progress_bar_position === 'screen-top' ? 'screen-top' : 'player');
       setChk('cfg_viewer_progress_bar_show_time', c.viewer_progress_bar_show_time !== 0);
       setVal('cfg_viewer_progress_bar_color', /^#[0-9a-f]{6}$/i.test(c.viewer_progress_bar_color || '') ? c.viewer_progress_bar_color : '#f5f5f5');
+      // Visitor messages (v0.33.250+)
+      setChk('cfg_visitor_messages_enabled', c.visitor_messages_enabled === 1);
+      setVal('cfg_visitor_messages_when', c.visitor_messages_when === 'always' ? 'always' : 'show');
+      setVal('cfg_visitor_messages_max_length', c.visitor_messages_max_length || 280);
+      setVal('cfg_visitor_messages_cooldown_minutes', c.visitor_messages_cooldown_minutes ?? 2);
+      setVal('cfg_visitor_messages_nightly_limit', c.visitor_messages_nightly_limit ?? 5);
+      setChk('cfg_visitor_messages_filter_enabled', c.visitor_messages_filter_enabled !== 0);
+      (async () => {
+        const ta = document.getElementById('cfg_visitor_messages_filter_words');
+        if (!ta || document.activeElement === ta) return;
+        if (c.visitor_messages_filter_words === null || c.visitor_messages_filter_words === undefined) {
+          const r = await api('/messages/default-words');
+          if (r.ok) ta.value = r.data.words;
+        } else {
+          ta.value = c.visitor_messages_filter_words;
+        }
+      })();
       setVal('cfg_page_effect_intensity', c.page_effect_intensity || 'medium');
       syncPageEffectColorPicker();
       updatePageEffectColorPlaceholder();
@@ -9299,6 +9399,8 @@
       document.getElementById('statQueue').textContent = d.queueLength ?? 0;
       document.getElementById('statPlayed').textContent = d.totalPlays ?? 0;
 
+      updateMessageBadge(d); // visitor messages (v0.5.91+)
+
       // Header count
       document.getElementById('headerViewerCount').innerHTML = '<strong>' + (d.activeViewers ?? 0) + '</strong> viewers';
 
@@ -9353,6 +9455,124 @@
         }
       }, 500);
     });
+
+    // ============================================================
+    // MESSAGES TAB (visitor messages, v0.5.91+)
+    // ============================================================
+    let msgPageSize = 100, msgShown = 100;
+    function fmtMsgTime(utc) {
+      const d = new Date(String(utc || '').replace(' ', 'T') + 'Z');
+      if (isNaN(d)) return String(utc || '');
+      return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+    async function loadMessagesTab(more) {
+      msgShown = more ? msgShown + msgPageSize : msgPageSize;
+      const filter = (document.getElementById('msgFilter') || {}).value || 'all';
+      const r = await api('/messages?filter=' + encodeURIComponent(filter) + '&limit=' + msgShown);
+      if (!r.ok) return;
+      const { messages, total, unread } = r.data;
+      updateMessageBadge({ unreadMessages: unread, messagesEnabled: !!(document.getElementById('cfg_visitor_messages_enabled') || {}).checked });
+      const enabled = (document.getElementById('cfg_visitor_messages_enabled') || {}).checked;
+      document.getElementById('msgSummary').textContent =
+        (total === 0 ? (filter === 'unread' ? 'No unread messages.' : 'No messages yet.') :
+          total + (filter === 'unread' ? ' unread' : ' message' + (total === 1 ? '' : 's') + ', ' + unread + ' unread') + '. Newest first.') +
+        (enabled ? '' : ' Messages are turned off (see Settings below).');
+      const list = document.getElementById('msgList');
+      list.textContent = '';
+      messages.forEach(m => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:0.75rem;align-items:flex-start;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:8px;' +
+          (m.is_read ? 'opacity:0.75;' : 'border-left:3px solid var(--accent);');
+        const body = document.createElement('div');
+        body.style.cssText = 'flex:1;min-width:0;';
+        const meta = document.createElement('div');
+        meta.className = 'muted';
+        meta.style.cssText = 'font-size:0.8rem;margin-bottom:0.2rem;';
+        meta.textContent = fmtMsgTime(m.created_at) + ' · ' + (m.name || 'No name') + (m.filtered ? ' · words hidden' : '') + (m.is_read ? '' : ' · new');
+        const text = document.createElement('div');
+        text.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;';
+        text.textContent = m.message;
+        body.appendChild(meta); body.appendChild(text);
+        const acts = document.createElement('div');
+        acts.style.cssText = 'display:flex;gap:0.4rem;flex-shrink:0;';
+        const readBtn = document.createElement('button');
+        readBtn.className = 'secondary';
+        readBtn.style.fontSize = '0.8rem';
+        readBtn.textContent = m.is_read ? 'Mark unread' : 'Mark read';
+        readBtn.addEventListener('click', async () => {
+          await api('/messages/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [m.id], read: !m.is_read }) });
+          loadMessagesTab();
+        });
+        const delBtn = document.createElement('button');
+        delBtn.className = 'danger';
+        delBtn.style.fontSize = '0.8rem';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Delete this message?')) return;
+          await api('/messages/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [m.id] }) });
+          loadMessagesTab();
+        });
+        acts.appendChild(readBtn); acts.appendChild(delBtn);
+        row.appendChild(body); row.appendChild(acts);
+        list.appendChild(row);
+      });
+      document.getElementById('msgMore').style.display = total > messages.length ? '' : 'none';
+    }
+    async function markAllMessagesRead() {
+      await api('/messages/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) });
+      loadMessagesTab();
+    }
+    async function deleteReadMessages() {
+      if (!confirm('Delete every message you have already read? This cannot be undone.')) return;
+      await api('/messages/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allRead: true }) });
+      loadMessagesTab();
+    }
+    function exportMessages() {
+      window.location.href = '/api/admin/messages/export';
+    }
+    async function saveMessageWords() {
+      const ta = document.getElementById('cfg_visitor_messages_filter_words');
+      await saveSetting('visitor_messages_filter_words', ta ? ta.value : '');
+    }
+    async function resetMessageWords() {
+      if (!confirm('Replace your word list with the built-in list?')) return;
+      await saveSetting('visitor_messages_filter_words', null);
+      const r = await api('/messages/default-words');
+      const ta = document.getElementById('cfg_visitor_messages_filter_words');
+      if (r.ok && ta) ta.value = r.data.words;
+    }
+    // Unread count: badge on the Messages tab (both layouts) and a dashboard
+    // banner. Fed by /stats (polled every 5 s) and by the Messages tab itself.
+    function updateMessageBadge(d) {
+      const n = Number(d && d.unreadMessages) || 0;
+      const label = n > 99 ? '99+' : String(n);
+      document.querySelectorAll('.tab-btn[data-tab="messages"], .spn-item[data-tab="messages"]').forEach(b => {
+        if (n > 0) b.setAttribute('data-unread', label); else b.removeAttribute('data-unread');
+      });
+      const banner = document.getElementById('messagesBanner');
+      if (banner) {
+        if (n > 0) {
+          banner.textContent = '';
+          const t = document.createElement('span');
+          t.textContent = '✉ ' + n + ' unread visitor message' + (n === 1 ? '' : 's') + '. ';
+          const a = document.createElement('a');
+          a.href = '#';
+          a.textContent = 'Read them';
+          a.style.cssText = 'color: inherit; font-weight: 700; text-decoration: underline;';
+          a.addEventListener('click', (e) => { e.preventDefault(); switchMainTab('messages'); });
+          banner.appendChild(t); banner.appendChild(a);
+          banner.style.display = '';
+          // New layout: keep the banner above the new dashboard.
+          const dash = document.getElementById('spnDash');
+          if (dash && dash.parentNode === banner.parentNode && (banner.compareDocumentPosition(dash) & Node.DOCUMENT_POSITION_PRECEDING)) {
+            dash.parentNode.insertBefore(banner, dash);
+          }
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+    }
+    window.updateMessageBadge = updateMessageBadge;
 
     // ============================================================
     // QUEUE TAB

@@ -301,6 +301,97 @@
   }
   window.addEventListener('showpilot:player-mode', () => placeProgressBar());
   window.addEventListener('showpilot:player-theme', () => placeProgressBar());
+  // ---- Visitor messages (v0.33.250+) ----
+  // {MESSAGE_BOX} renders form[data-showpilot-message-box]; the optional
+  // {message-dynamic-container} marks [data-showpilot-container="messages"].
+  // Both are shown only while messages are open ({enabled, open, maxLength}
+  // from the bootstrap and every /api/state poll). Sending goes through
+  // buildBody(), so the access code / GPS checks match voting and requests.
+  // Results: the box's own status line always, plus the template's
+  // #messageSent / #messageFailed / #messageTooSoon when it has them.
+  let messagesCfg = null;
+  function applyMessagesState(m) {
+    if (!m || typeof m !== 'object') return;
+    messagesCfg = m;
+    const open = !!(m.enabled && m.open);
+    document.querySelectorAll('[data-showpilot-container="messages"], form[data-showpilot-message-box]').forEach(el => {
+      if (open) el.removeAttribute('hidden'); else el.setAttribute('hidden', '');
+    });
+    const max = Number(m.maxLength) || 280;
+    document.querySelectorAll('form[data-showpilot-message-box]').forEach(form => {
+      const ta = form.querySelector('.sp-message-text');
+      if (ta && String(ta.maxLength) !== String(max)) { ta.maxLength = max; updateMessageCount(form); }
+    });
+  }
+  function updateMessageCount(form) {
+    const ta = form.querySelector('.sp-message-text');
+    const cnt = form.querySelector('.sp-message-count');
+    if (!ta || !cnt) return;
+    const max = ta.maxLength > 0 ? ta.maxLength : ((messagesCfg && messagesCfg.maxLength) || 280);
+    cnt.textContent = ta.value.length + '/' + max;
+  }
+  function setMessageStatus(form, text, kind) {
+    const st = form.querySelector('.sp-message-status');
+    if (!st) return;
+    st.textContent = text || '';
+    st.setAttribute('data-kind', kind || '');
+  }
+  function showTemplateMessage(id, text) {
+    if (!document.getElementById(id)) return;
+    showMessage(id, 5000, text || null);
+  }
+  async function sendVisitorMessage(form) {
+    const ta = form.querySelector('.sp-message-text');
+    const nameEl = form.querySelector('.sp-message-name');
+    const btn = form.querySelector('.sp-message-send');
+    const text = ta ? ta.value.trim() : '';
+    if (!text) { setMessageStatus(form, 'Please type a message first.', 'error'); if (ta) ta.focus(); return; }
+    if (form.__spSending) return;
+    form.__spSending = true;
+    if (btn) btn.disabled = true;
+    setMessageStatus(form, 'Sending…', '');
+    try {
+      let body;
+      try {
+        body = await buildBody({ message: text, name: nameEl ? nameEl.value.trim() : '' });
+      } catch (e) {
+        setMessageStatus(form, (e && e.help) || 'Location is needed to send a message.', 'error');
+        return;
+      }
+      const r = await postJson('/api/message', body);
+      if (r.ok) {
+        if (ta) ta.value = '';
+        updateMessageCount(form);
+        setMessageStatus(form, 'Thanks! Your message was sent to the show.', 'ok');
+        showTemplateMessage('messageSent');
+        return;
+      }
+      const err = (r.data && r.data.error) || 'Your message could not be sent.';
+      setMessageStatus(form, err, 'error');
+      const reason = r.data && r.data.reason;
+      if (reason === 'tooSoon') showTemplateMessage('messageTooSoon', err);
+      else if (reason === 'location') showMessage(mapErrorToId(err, r.data), 6000, null, err);
+      else showTemplateMessage('messageFailed', err);
+      if (reason === 'closed') refreshState();
+    } catch (_) {
+      setMessageStatus(form, 'Your message could not be sent. Please try again.', 'error');
+      showTemplateMessage('messageFailed');
+    } finally {
+      form.__spSending = false;
+      if (btn) btn.disabled = false;
+    }
+  }
+  document.addEventListener('submit', (e) => {
+    const form = e.target && e.target.closest ? e.target.closest('form[data-showpilot-message-box]') : null;
+    if (!form) return;
+    e.preventDefault();
+    sendVisitorMessage(form);
+  });
+  document.addEventListener('input', (e) => {
+    const form = e.target && e.target.closest ? e.target.closest('form[data-showpilot-message-box]') : null;
+    if (form) updateMessageCount(form);
+  });
+
   function applyProgressBarConfig(cfg) {
     if (!cfg || typeof cfg !== 'object') return;
     const key = JSON.stringify(cfg);
@@ -356,6 +447,10 @@
   }
   // Inline {NOW_PLAYING_PROGRESS} needs the styles even with the setting off.
   if (document.querySelector('[data-showpilot-progress]')) ensureProgressStyles();
+  if (boot.messages) {
+    if (document.body) applyMessagesState(boot.messages);
+    else document.addEventListener('DOMContentLoaded', () => applyMessagesState(boot.messages));
+  }
   if (boot.progressBar) {
     if (document.body) applyProgressBarConfig(boot.progressBar);
     else document.addEventListener('DOMContentLoaded', () => applyProgressBarConfig(boot.progressBar));
@@ -634,7 +729,7 @@
     // 1) The song lists: each mode container's contents, in page order.
     //    (The access-code and after-hours blocks are left alone.)
     const pick = d => Array.from(d.querySelectorAll('[data-showpilot-container]'))
-      .filter(el => !/^(locationcode|afterhours)$/.test(el.getAttribute('data-showpilot-container')));
+      .filter(el => !/^(locationcode|afterhours|messages)$/.test(el.getAttribute('data-showpilot-container')));
     const cur = pick(document), next = pick(doc);
     if (cur.length === next.length) cur.forEach((el, i) => { el.innerHTML = next[i].innerHTML; });
     // 2) The race grid: remove, replace or insert where the server puts it.
@@ -745,6 +840,7 @@
     // both (even if null — that's how we know to render --:--).
     updateTimerFromState(data.nowPlayingStartedAtIso || null, data.nowPlayingDurationSeconds || null);
     if (data.progressBar) applyProgressBarConfig(data.progressBar);
+    if (data.messages) applyMessagesState(data.messages);
 
     // --- Reset "already voted" gate when the round id changes ---
     // Round-id check is the backup for voteReset socket events which

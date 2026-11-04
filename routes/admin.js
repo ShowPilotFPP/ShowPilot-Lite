@@ -318,11 +318,20 @@ router.put('/config', requireAdmin, (req, res) => {
     'translation_backend',
     'translation_api_url',
     'translation_api_key',
+    // Visitor messages (v0.5.91+, lib/visitor-messages.js)
+    'visitor_messages_enabled',
+    'visitor_messages_when',
+    'visitor_messages_max_length',
+    'visitor_messages_cooldown_minutes',
+    'visitor_messages_nightly_limit',
+    'visitor_messages_filter_enabled',
+    'visitor_messages_filter_words',
   ];
   const updates = {};
   for (const k of allowed) {
     if (k in req.body) updates[k] = req.body[k];
   }
+  require('../lib/visitor-messages').sanitizeSettings(updates);
 
   // Sanitize psa_trigger_mode (v0.4.0+) to one of two allowed values.
   // Anything else falls back to 'interactions' (the default + safe option).
@@ -769,7 +778,41 @@ router.get('/stats', requireAdmin, (req, res) => {
     nowPlaying: nowPlayingName,
     nextUp,
     nextUpSource,
+    // Visitor messages (v0.5.91+): unread count for the dashboard / tab badge.
+    messagesEnabled: cfg.visitor_messages_enabled === 1,
+    unreadMessages: require('../lib/visitor-messages').unreadCount(),
   });
+});
+
+// ---- Visitor messages (v0.33.250+, lib/visitor-messages.js) ----
+// GET ?filter=all|unread&limit=&offset= → { messages, total, unread }
+router.get('/messages', requireAdmin, (req, res) => {
+  const vm = require('../lib/visitor-messages');
+  res.json(vm.list({ filter: req.query.filter === 'unread' ? 'unread' : 'all', limit: req.query.limit, offset: req.query.offset }));
+});
+// POST { ids: [..] } or { all: true }, with read: true|false (default true)
+router.post('/messages/read', requireAdmin, (req, res) => {
+  const vm = require('../lib/visitor-messages');
+  const b = req.body || {};
+  const changed = vm.setRead({ ids: b.ids, all: b.all === true, read: b.read !== false });
+  res.json({ ok: true, changed, unread: vm.unreadCount() });
+});
+// POST { ids: [..] } | { allRead: true } | { all: true }
+router.post('/messages/delete', requireAdmin, (req, res) => {
+  const vm = require('../lib/visitor-messages');
+  const b = req.body || {};
+  const deleted = vm.remove({ ids: b.ids, allRead: b.allRead === true, all: b.all === true });
+  res.json({ ok: true, deleted, unread: vm.unreadCount() });
+});
+router.get('/messages/export', requireAdmin, (req, res) => {
+  const csv = require('../lib/visitor-messages').toCsv();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="visitor-messages-${new Date().toISOString().slice(0, 10)}.csv"`);
+  res.send('\uFEFF' + csv);
+});
+// The built-in word list, for the admin's "Reset to the built-in list" button.
+router.get('/messages/default-words', requireAdmin, (req, res) => {
+  res.json({ words: require('../lib/visitor-messages').DEFAULT_FILTER_WORDS });
 });
 
 router.get('/history', requireAdmin, (req, res) => {

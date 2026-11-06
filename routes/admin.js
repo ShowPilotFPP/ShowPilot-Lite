@@ -405,6 +405,11 @@ router.put('/config', requireAdmin, (req, res) => {
   }
   if ('show_timezone' in updates) require('../lib/template-schedule').recomputeAll();
 
+  // Install count: when the owner answers the notice or changes the
+  // setting, check in now so the stats page reflects it right away.
+  if ('install_count_enabled' in updates || 'install_count_location' in updates || 'install_count_notice_seen' in updates) {
+    try { require('../lib/install-count').sendSoon(); } catch { /* best effort */ }
+  }
   res.json({ ok: true });
 });
 

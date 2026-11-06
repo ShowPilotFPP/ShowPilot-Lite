@@ -101,6 +101,7 @@
   <div class="grp">Extras</div>
   <a href="#progress">Progress bar</a>
   <a href="#visitor">Visitor messages</a>
+  <a href="#extras">Dates, countdowns, stats</a>
   <a href="#vars">CSS variables</a>
   <a href="#js">JavaScript</a>
   <a href="#tips">Tips</a>
@@ -295,6 +296,20 @@
 <pre><code>.msg-closed { display: none; }
 .panel:has(form[data-showpilot-message-box][hidden]) .msg-closed { display: block; }</code></pre>
     <p><code>{MESSAGE_WALL}</code> gives <code>section.sp-message-wall[data-showpilot-message-wall]</code> with <code>data-style</code> = <code>cards</code>, <code>bubbles</code> or <code>ticker</code>. Both carry <code>data-sp-theme</code> = <code>dark</code> or <code>light</code> (the Box style setting). Inner classes start with <code>sp-message-</code> and <code>sp-wall-</code>. Your page's own CSS is kept away from them, so set the colors with the <code>--sp-message-*</code> <a href="#vars">variables</a>.</p>
+  </section>
+
+  <section id="extras" data-s>
+    <h2>Dates, countdowns and stats</h2>
+    <p class="lead">These are what the Countdown, Banner, Top Songs and Tonight's Stats blocks use; they work in hand-built templates too.</p>
+    <div class="card"><table>
+      <thead><tr><th>Attribute</th><th>Does</th></tr></thead>
+      <tbody>
+        <tr><td><code>data-showpilot-from="12-01"</code><br><code>data-showpilot-until="12-26"</code> <span class="tag sp">SP</span></td><td>The element only shows between those dates (both included), checked on the visitor's phone. <code>MM-DD</code> repeats every year (and can wrap over New Year, e.g. <code>12-20</code> to <code>01-05</code>); <code>YYYY-MM-DD</code> is one date. Either can be left out. Add <code>hidden</code> too so it doesn't flash before the check.</td></tr>
+        <tr><td><code>data-showpilot-countdown="daily"</code> with <code>data-start="18:00"</code> <code>data-end="22:00"</code><br>or <code>data-showpilot-countdown="date"</code> with <code>data-date="2026-12-24T18:00"</code> <span class="tag sp">SP</span></td><td>A countdown. Inside it, <code>[data-showpilot-countdown-time]</code> gets the time left and <code>[data-showpilot-countdown-live]</code> is shown (the time hidden) while the show is on. The box gets <code>.sp-countdown--live</code> then.</td></tr>
+        <tr><td><code>data-showpilot-stat="played"</code> (or <code>requests</code>, <code>votes</code>, <code>visitors</code>) <span class="tag sp">SP</span></td><td>Filled with tonight's number (4 AM to 4 AM in the show's time zone), updated every minute.</td></tr>
+        <tr><td><code>data-showpilot-top-songs="tonight"</code> (or <code>week</code>, <code>all</code>), <code>data-count="5"</code> <span class="tag sp">SP</span></td><td>Inside it, <code>[data-showpilot-top-songs-list]</code> (an <code>&lt;ol&gt;</code>) gets the songs visitors picked most as <code>li.sp-top-song</code> with <code>.sp-top-song-name</code> and <code>.sp-top-song-artist</code>; <code>[data-showpilot-top-songs-empty]</code> shows while there are none.</td></tr>
+      </tbody>
+    </table></div>
   </section>
 
   <section id="vars" data-s>

@@ -81,6 +81,13 @@ Edit `config.js`. Defaults are sensible for FPP-on-LAN deployments. Notable sett
 - `jwtSecret` and `showToken` — leave `null` to auto-generate; persisted to `data/secrets.json` after first boot
 - `trustProxy` — `false` if you expose port 3100 directly, `1` if you put nginx/Caddy in front
 
+## Anonymous install count
+
+Once a day ShowPilot-Lite sends an anonymous check-in so we know how many installs are running and which versions they use. It sends only a random ID made on your install, the product name and the version. No show name, URL, IP address or settings, and nothing is sent back. You can see the exact message in **Settings → General → Install count**.
+
+- **Turn it off:** untick *Count this install* there, or set `installCount: false` in `config.js`, or set the environment variable `SHOWPILOT_NO_INSTALL_COUNT=1`. `DO_NOT_TRACK=1` also works.
+- **Show map (optional, off by default):** pick *Country*, *State / region* or *Town* to put your show on the public map. ShowPilot-Lite still sends no location; the counter uses an approximate lookup of the connection and keeps only the level you chose.
+
 ## License
 
 MIT. See LICENSE.

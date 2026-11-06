@@ -231,6 +231,12 @@ router.get('/config', requireAdmin, (req, res) => {
   res.json(cfg);
 });
 
+// Anonymous install count status for Settings → General (v0.5.112+).
+router.get('/install-count', requireAdmin, (req, res) => {
+  try { res.json(require('../lib/install-count').status()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put('/config', requireAdmin, (req, res) => {
   const allowed = [
     'show_name',
@@ -336,6 +342,9 @@ router.put('/config', requireAdmin, (req, res) => {
     'visitor_messages_wall_approve',
     'visitor_messages_wall_style',
     'visitor_messages_wall_count',
+    'install_count_enabled',
+    'install_count_location',
+    'install_count_notice_seen',
   ];
   const updates = {};
   for (const k of allowed) {
@@ -362,6 +371,12 @@ router.put('/config', requireAdmin, (req, res) => {
     if (k in updates && !/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(updates[k]))) {
       return res.status(400).json({ error: 'Badge colors must be like #dc2626' });
     }
+  }
+  if ('install_count_location' in updates && !['off', 'country', 'region', 'city'].includes(updates.install_count_location)) {
+    return res.status(400).json({ error: 'Location must be off, country, region or city' });
+  }
+  for (const k of ['install_count_enabled', 'install_count_notice_seen']) {
+    if (k in updates) updates[k] = updates[k] ? 1 : 0;
   }
   if ('viewer_control_mode' in updates && !['VOTING', 'JUKEBOX', 'RACE', 'LISTEN', 'OFF'].includes(updates.viewer_control_mode)) {
     return res.status(400).json({ error: 'Unknown viewer mode' });

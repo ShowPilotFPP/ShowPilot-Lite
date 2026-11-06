@@ -93,6 +93,13 @@ module.exports = {
     resetAfterWinnerPlays: true,
   },
 
+  // Anonymous install count (v0.5.112+). Once a day ShowPilot-Lite sends a
+  // random install ID, the product name and its version so we know how many
+  // installs are running — nothing else. Turn it off in
+  // Settings → General → Install count, or set this to false to lock it off.
+  // (The env var SHOWPILOT_NO_INSTALL_COUNT=1 also works.)
+  // installCount: false,
+
   // Logging
   logLevel: 'info', // 'debug' | 'info' | 'warn' | 'error'
 };

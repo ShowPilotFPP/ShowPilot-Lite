@@ -1934,7 +1934,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.107</span>
+        <span class="app-version">v0.5.108</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -6947,14 +6947,17 @@
 
     let _categoryOptionsLoaded = false;
 
-    // ======= Resizable text columns in the Sequences table (v0.5.101, fixed in v0.5.105) =======
-    // Drag a header's right edge and that edge follows the pointer; only that
-    // column changes, and the table gets wider or narrower (it scrolls
-    // sideways when wider than the card). Widths (px) are kept in this
-    // browser; double-click an edge to go back to the automatic layout.
-    // How: the table switches to table-layout: fixed with every header's
-    // current width pinned (automatic layout would hand the space a column
-    // gives up to the others, so the edge didn't follow the pointer).
+    // ======= Resizable text columns in the Sequences table (v0.5.101; reworked in 0.5.105 and 0.5.108) =======
+    // The five text columns (Display Name, Sequence Name, Artist, Category,
+    // Badge) share ALL the room the other columns leave, in the proportions
+    // you set by dragging; the table always fills the card. While you drag,
+    // the edge follows the pointer exactly (the buttons column on the right
+    // gives or takes the room); when you let go, the text columns are scaled
+    // together to fill the card again. Proportions are kept in this browser;
+    // double-click an edge to go back to the automatic layout.
+    // How: table-layout: fixed with every visible header's width pinned (the
+    // automatic layout reshuffles columns and never lets an edge follow the
+    // pointer).
     const SEQ_COLW_KEY = 'sp-seq-col-widths-v3';
     const SEQ_COL_MIN = 50;
     function seqColWidths() {
@@ -6967,30 +6970,38 @@
       t.style.width = ''; t.style.minWidth = '';
       seqTableHeads(t).forEach((th) => { th.style.width = ''; });
     }
-    // Fixed layout, every visible header at its current width, then any saved
-    // widths on top. Needs the table on screen to measure it.
-    function pinSeqTable(t, saved) {
+    // Fixed layout. Other columns keep their natural width; the text columns
+    // get the rest, split by the saved proportions (or their current widths).
+    // fit = false (while dragging) leaves the text widths as given.
+    function pinSeqTable(t, saved, fit = true) {
       if (!t || !t.offsetParent) return false;
       unpinSeqTable(t);
-      const ths = seqTableHeads(t);
-      const widths = ths.map((th) => th.getBoundingClientRect().width);
-      let sum = 0;
-      ths.forEach((th, i) => {
-        if (!th.offsetParent) return; // hidden column (Columns menu)
-        const col = th.getAttribute('data-resize');
-        const w = col && saved && saved[col] > 0 ? Math.max(SEQ_COL_MIN, saved[col]) : widths[i];
-        sum += w;
-        // The buttons column on the right is left without a width: it takes
-        // up whatever room is spare, so the table always reaches the card's
-        // right edge (v0.5.107).
-        if (th.classList.contains('col-actions')) { th.style.width = 'auto'; return; }
-        th.style.width = Math.round(w) + 'px';
+      const ths = seqTableHeads(t).filter((th) => th.offsetParent);
+      const natural = new Map(ths.map((th) => [th, th.getBoundingClientRect().width]));
+      const text = ths.filter((th) => th.hasAttribute('data-resize'));
+      const other = ths.filter((th) => !th.hasAttribute('data-resize'));
+      const otherSum = other.reduce((n, th) => n + natural.get(th), 0);
+      const want = new Map(text.map((th) => {
+        const c = th.getAttribute('data-resize');
+        return [th, saved && saved[c] > 0 ? saved[c] : natural.get(th)];
+      }));
+      let wantSum = text.reduce((n, th) => n + want.get(th), 0) || 1;
+      const avail = (t.parentElement ? t.parentElement.clientWidth : t.getBoundingClientRect().width) - otherSum;
+      const factor = fit && avail > text.length * SEQ_COL_MIN ? avail / wantSum : 1;
+      let total = otherSum;
+      text.forEach((th) => {
+        const w = Math.max(SEQ_COL_MIN, Math.floor(want.get(th) * factor));
+        th.style.width = w + 'px';
+        total += w;
+      });
+      other.forEach((th) => {
+        // The buttons column takes any rounding leftover (and, while
+        // dragging, the room a column gives or takes).
+        th.style.width = th.classList.contains('col-actions') ? 'auto' : Math.round(natural.get(th)) + 'px';
       });
       t.classList.add('sp-fixed-cols');
-      // At least as wide as the columns need (then it scrolls sideways),
-      // otherwise the card's full width.
       t.style.width = '100%';
-      t.style.minWidth = Math.round(sum) + 'px';
+      t.style.minWidth = Math.round(total) + 'px';
       return true;
     }
     function applySeqColWidths() {
@@ -6999,19 +7010,23 @@
       const saved = seqColWidths();
       if (saved) pinSeqTable(t, saved); else unpinSeqTable(t);
     }
-    // The table can't be measured while its page is hidden; apply saved
-    // widths once it shows up.
+    // Apply saved proportions when the table first shows (a hidden table
+    // can't be measured) and fit again when the window changes width.
     let _seqColWatch = null;
     function watchSeqColWidths() {
       const t = document.getElementById('sequencesTable');
       if (!t || _seqColWatch || typeof ResizeObserver === 'undefined') return;
-      let wasShown = false;
+      let lastW = -1, timer = null;
       _seqColWatch = new ResizeObserver(() => {
-        const shown = !!t.offsetParent;
-        if (shown && !wasShown && seqColWidths() && !t.classList.contains('sp-fixed-cols')) applySeqColWidths();
-        wasShown = shown;
+        const box = t.parentElement || t;
+        const w = t.offsetParent ? box.clientWidth : 0;
+        if (w === lastW) return;
+        lastW = w;
+        if (!w || !seqColWidths() || t.__spDragging) return;
+        clearTimeout(timer);
+        timer = setTimeout(applySeqColWidths, 80);
       });
-      _seqColWatch.observe(t);
+      _seqColWatch.observe(t.parentElement || t);
     }
     function initSeqColResize() {
       const t = document.getElementById('sequencesTable');
@@ -7031,7 +7046,11 @@
         });
         h.addEventListener('pointerdown', (e) => {
           e.preventDefault(); e.stopPropagation();
-          if (!pinSeqTable(t, seqColWidths())) return;
+          // Start from what's on screen, without re-fitting.
+          const current = {};
+          t.querySelectorAll('th[data-resize]').forEach((x) => { if (x.offsetParent) current[x.getAttribute('data-resize')] = x.getBoundingClientRect().width; });
+          if (!pinSeqTable(t, current, false)) return;
+          t.__spDragging = true;
           const startX = e.clientX;
           const startW = parseFloat(th.style.width) || th.getBoundingClientRect().width;
           const startMin = parseFloat(t.style.minWidth) || t.getBoundingClientRect().width;
@@ -7052,6 +7071,8 @@
             const w = {};
             t.querySelectorAll('th[data-resize]').forEach((x) => { if (x.offsetParent) w[x.getAttribute('data-resize')] = Math.round(parseFloat(x.style.width) || x.getBoundingClientRect().width); });
             try { localStorage.setItem(SEQ_COLW_KEY, JSON.stringify(w)); } catch (err) {}
+            t.__spDragging = false;
+            pinSeqTable(t, w); // fill the card again with the new proportions
           };
           h.addEventListener('pointermove', move);
           h.addEventListener('pointerup', up);

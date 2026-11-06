@@ -310,7 +310,7 @@ ShowPilot issue #38 (@cathelest), mirrored from main. Visitors send a short mess
 
 ## Anonymous install count (from v0.5.112; mirrors ShowPilot v0.33.266)
 
-Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (Cloudflare Worker) is in ShowPilot main's `tools/install-counter/`.
+Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (small Node app behind a Cloudflare Tunnel) is in ShowPilot main's `tools/install-counter/`.
 
 ## Recent state (as of v0.5.112, November 2026)
 

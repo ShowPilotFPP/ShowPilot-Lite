@@ -1408,11 +1408,19 @@
        dropdown was squeezed to two letters). Below the min-width the table
        scrolls sideways instead of crushing columns. */
     #sequencesTable { width: 100%; min-width: 1400px; }
-    #sequencesTable th.col-display, #sequencesTable td.col-display { width: 23%; max-width: 0; }
-    #sequencesTable th.col-seqname, #sequencesTable td.col-seqname { width: 19%; max-width: 0; }
-    #sequencesTable th.col-artist, #sequencesTable td.col-artist { width: 17%; max-width: 0; }
-    #sequencesTable th.col-category, #sequencesTable td.col-category { width: 19%; max-width: 0; }
-    #sequencesTable th.col-badge, #sequencesTable td.col-badge { width: 14%; max-width: 0; }
+    /* Text columns: resizable by dragging their header's right edge
+       (v0.5.101, widths kept per browser); double-click the edge to reset.
+       Badge is narrower by default (labels are short). */
+    #sequencesTable { --w-display: 26%; --w-seqname: 19%; --w-artist: 17%; --w-category: 19%; --w-badge: 9%; }
+    #sequencesTable th.col-display, #sequencesTable td.col-display { width: var(--w-display); max-width: 0; }
+    #sequencesTable th.col-seqname, #sequencesTable td.col-seqname { width: var(--w-seqname); max-width: 0; }
+    #sequencesTable th.col-artist, #sequencesTable td.col-artist { width: var(--w-artist); max-width: 0; }
+    #sequencesTable th.col-category, #sequencesTable td.col-category { width: var(--w-category); max-width: 0; }
+    #sequencesTable th.col-badge, #sequencesTable td.col-badge { width: var(--w-badge); max-width: 0; }
+    #sequencesTable th[data-resize] { position: relative; }
+    #sequencesTable .col-resize { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; z-index: 2; touch-action: none; }
+    #sequencesTable .col-resize::after { content: ''; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 1px; background: var(--border); }
+    #sequencesTable th[data-resize]:hover .col-resize::after, #sequencesTable .col-resize.dragging::after { background: var(--accent, #dc2626); width: 2px; }
     #sequencesTable .seq-badge-select { width: 100%; min-width: 0; text-overflow: ellipsis; }
     #sequencesTable .col-seqname code { display: block; max-width: 100%; width: fit-content; overflow: hidden; text-overflow: ellipsis;
                                         white-space: nowrap; }
@@ -1903,7 +1911,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.100</span>
+        <span class="app-version">v0.5.101</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -2158,12 +2166,12 @@
                   <th class="col-tight"></th>
                   <th class="col-tight col-status" title="Green: in your show player's playlist. Red: inactive — no longer in the playlist; kept with all its details and hidden from viewers.">Status</th>
                   <th class="col-tight col-art">Art</th>
-                  <th class="col-display">Display Name</th>
-                  <th class="col-seqname">FPP Name</th>
+                  <th data-resize="display" class="col-display">Display Name</th>
+                  <th data-resize="seqname" class="col-seqname">FPP Name</th>
                   <th class="col-tight col-index" title="Position in your show player's playlist, from the last sync. If the wrong song plays, check this matches the playlist (and sync again).">Playlist #</th>
-                  <th class="col-artist">Artist</th>
-                  <th class="col-category" title="Group sequences on the viewer page. Manage categories in the Categories card below.">Category</th>
-                  <th class="col-badge" title="A short label shown after the song's name on the viewer page, like New or Fan Favorite.">Badge</th>
+                  <th data-resize="artist" class="col-artist">Artist</th>
+                  <th data-resize="category" class="col-category" title="Group sequences on the viewer page. Manage categories in the Categories card below.">Category</th>
+                  <th data-resize="badge" class="col-badge" title="A short label shown after the song's name on the viewer page, like New or Fan Favorite.">Badge</th>
                   <th class="col-tight col-visible">Visible</th>
                   <th class="col-tight col-vote">Vote</th>
                   <th class="col-tight col-jukebox">Jukebox</th>
@@ -6911,7 +6919,80 @@
 
     let _categoryOptionsLoaded = false;
 
+    // ======= Resizable text columns in the Sequences table (v0.5.101) =======
+    // Drag a header's right edge; widths are kept in this browser as
+    // percentages. The space a column gains or gives up comes from Display
+    // Name (or Artist while Display Name itself is dragged), so the total
+    // never changes and the table doesn't reshuffle. Double-click resets.
+    const SEQ_COLW_KEY = 'sp-seq-col-widths-v2';
+    const SEQ_COLW_DEFAULT = { display: 26, seqname: 19, artist: 17, category: 19, badge: 9 };
+    function seqColWidths() {
+      let w = {};
+      try { w = JSON.parse(localStorage.getItem(SEQ_COLW_KEY) || '{}') || {}; } catch (e) { w = {}; }
+      const out = {};
+      for (const c of Object.keys(SEQ_COLW_DEFAULT)) out[c] = Number(w[c]) > 0 ? Number(w[c]) : SEQ_COLW_DEFAULT[c];
+      return out;
+    }
+    function applySeqColWidths(w) {
+      const t = document.getElementById('sequencesTable');
+      if (!t) return;
+      w = w || seqColWidths();
+      for (const c of Object.keys(SEQ_COLW_DEFAULT)) t.style.setProperty('--w-' + c, w[c].toFixed(2) + '%');
+    }
+    function initSeqColResize() {
+      const t = document.getElementById('sequencesTable');
+      if (!t || t.__spResize) return;
+      t.__spResize = true;
+      t.querySelectorAll('th[data-resize]').forEach((th) => {
+        const col = th.getAttribute('data-resize');
+        const h = document.createElement('span');
+        h.className = 'col-resize';
+        h.title = 'Drag to resize · double-click to reset all columns';
+        h.addEventListener('click', (e) => e.stopPropagation());
+        h.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          try { localStorage.removeItem(SEQ_COLW_KEY); } catch (err) {}
+          applySeqColWidths();
+        });
+        h.addEventListener('pointerdown', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const slack = col === 'display' ? 'artist' : 'display';
+          const start = seqColWidths();
+          // Pixels per percent, measured from the text columns themselves (the
+          // fixed-size columns take their share first), so the edge follows
+          // the pointer.
+          let pxSum = 0, pctSum = 0;
+          t.querySelectorAll('th[data-resize]').forEach((x) => { pxSum += x.getBoundingClientRect().width; pctSum += start[x.getAttribute('data-resize')]; });
+          const pxPerPct = pxSum > 0 && pctSum > 0 ? pxSum / pctSum : (t.getBoundingClientRect().width || 1400) / 100;
+          const minPct = 60 / pxPerPct;  // no column narrower than ~60px
+          const startX = e.clientX;
+          let cur = start;
+          h.classList.add('dragging');
+          try { h.setPointerCapture(e.pointerId); } catch (err) {}
+          const move = (ev) => {
+            let d = (ev.clientX - startX) / pxPerPct;
+            d = Math.max(minPct - start[col], Math.min(start[slack] - minPct, d));
+            cur = { ...start, [col]: start[col] + d, [slack]: start[slack] - d };
+            applySeqColWidths(cur);
+          };
+          const up = () => {
+            h.classList.remove('dragging');
+            h.removeEventListener('pointermove', move);
+            h.removeEventListener('pointerup', up);
+            h.removeEventListener('pointercancel', up);
+            try { localStorage.setItem(SEQ_COLW_KEY, JSON.stringify(cur)); } catch (err) {}
+          };
+          h.addEventListener('pointermove', move);
+          h.addEventListener('pointerup', up);
+          h.addEventListener('pointercancel', up);
+        });
+        th.appendChild(h);
+      });
+      applySeqColWidths();
+    }
+
     async function loadSequences() {
+      initSeqColResize();
       // Categories first — each row's Category dropdown is built from the cache.
       await loadCategories();
       if (!_categoryOptionsLoaded) { _categoryOptionsLoaded = true; loadCategoryDisplayOptions(); }

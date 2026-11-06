@@ -741,4 +741,7 @@ server.listen(config.port, config.host, () => {
   // Secret resolution + any "first run, generated for you" announcements
   // happen in lib/config-loader.js — by the time we get here, secrets are
   // already real values from one of: env > config.js > secrets.json > generated.
+
+  // Anonymous daily install count (see lib/install-count.js for exactly what's sent).
+  try { require('./lib/install-count').start(); } catch (err) { /* never block startup */ }
 });

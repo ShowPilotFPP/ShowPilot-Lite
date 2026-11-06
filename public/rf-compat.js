@@ -98,6 +98,13 @@
     invalidLocationCode: 'invalidLocationCode',
     failed: 'requestFailed',
     alreadyQueued: 'requestPlaying',
+    // v0.5.110: the viewer already has as many requests waiting as the show
+    // allows (Remote Falcon's ID); without one, #requestFailed with the
+    // server's sentence.
+    alreadyRequested: 'alreadyRequested',
+    // Remote Falcon's "song not available right now" box, used for
+    // cooldowns when a page has no #songCooldown (v0.5.110).
+    sequenceUnavailable: 'sequenceUnavailable',
     queueFull: 'queueFull',
     alreadyVoted: 'alreadyVoted',
     // v0.5.100: a song that's cooling down. Templates can add their own
@@ -162,7 +169,11 @@
   function mapErrorToId(error, data) {
     if (data && data.invalidLocationCode) return MSG_IDS.invalidLocationCode;
     if (data && data.cooldown) return MSG_IDS.songCooldown;
+    if (data && data.viewerLimit) return MSG_IDS.alreadyRequested;
+    if (data && data.sequenceLimit) return MSG_IDS.alreadyQueued;
     const msg = (error || '').toLowerCase();
+    if (msg.startsWith('you already have')) return MSG_IDS.alreadyRequested;
+    if (msg.includes('requested the maximum number')) return MSG_IDS.alreadyQueued;
     if (msg.includes('miles of the show')) return MSG_IDS.invalidLocation;
     if (msg.includes('access code')) return MSG_IDS.invalidLocationCode;
     if (msg.includes('location')) return MSG_IDS.invalidLocation;
@@ -801,19 +812,25 @@
       showCooldownMessage(data.cooldown && data.cooldown.text, err);
       return;
     }
+    if (id === MSG_IDS.alreadyRequested && !document.getElementById(id)) {
+      showMessage(MSG_IDS.failed, 6000, err);
+      return;
+    }
     showMessage(id, undefined, undefined, err);
   }
   // Shows the cooldown answer in the template's #songCooldown (filling any
-  // [data-showpilot-cooldown-text] inside it), or, for templates without
-  // one, in #requestFailed with the full sentence.
+  // [data-showpilot-cooldown-text] inside it), else Remote Falcon's
+  // #sequenceUnavailable, or, for templates with neither, #requestFailed
+  // with the full sentence.
   function showCooldownMessage(text, sentence) {
-    const box = document.getElementById(MSG_IDS.songCooldown);
+    const id = document.getElementById(MSG_IDS.songCooldown) ? MSG_IDS.songCooldown : MSG_IDS.sequenceUnavailable;
+    const box = document.getElementById(id);
     if (!box) {
       showMessage(MSG_IDS.failed, 4500, sentence || 'That song was just played. Try another.');
       return;
     }
     if (text) box.querySelectorAll('[data-showpilot-cooldown-text]').forEach(el => { el.textContent = text; });
-    showMessage(MSG_IDS.songCooldown, 4500);
+    showMessage(id, 4500);
   }
   // A tap on a song marked as cooling down (kept on the page by the show's
   // setting) answers right away from its data-cooldown, without a request.
@@ -1169,7 +1186,7 @@
         : data.queue.map(e => {
             const seq = byName[e.sequence_name];
             const name = seq ? seq.display_name : e.sequence_name;
-            return `<div class="queue-item" data-seq="${escapeAttr(e.sequence_name)}">${escapeHtml(name)}</div>`;
+            return `<div class="queue-item jukebox-queue" data-seq="${escapeAttr(e.sequence_name)}">${escapeHtml(name)}</div>`;
           }).join('');
       queueListEls.forEach(el => { el.innerHTML = queueHtml; });
     }
@@ -1758,7 +1775,7 @@
       const label = (seq.category && String(seq.category).trim()) || other;
       const key = label.toLowerCase();
       if (key !== prevKey) {
-        out.push(`<div class="sequence-category-header" data-showpilot-category="${escapeHtml(label)}">${escapeHtml(label)}</div>`);
+        out.push(`<div class="sequence-category-header category-label" data-showpilot-category="${escapeHtml(label)}">${escapeHtml(label)}</div>`);
         prevKey = key;
       }
       out.push(rowFn(seq));

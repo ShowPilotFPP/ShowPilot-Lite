@@ -1420,6 +1420,11 @@
     #sequencesTable th.col-category, #sequencesTable td.col-category { width: var(--w-category); max-width: 0; }
     #sequencesTable th.col-badge, #sequencesTable td.col-badge { width: var(--w-badge); max-width: 0; }
     #sequencesTable th[data-resize] { position: relative; }
+    /* After a column is resized: fixed layout with pixel widths per header. */
+    #sequencesTable.sp-fixed-cols { table-layout: fixed; min-width: 0; }
+    #sequencesTable.sp-fixed-cols th, #sequencesTable.sp-fixed-cols td { max-width: none; overflow: hidden; }
+    #sequencesTable.sp-fixed-cols th { white-space: nowrap; text-overflow: ellipsis; }
+    #sequencesTable.sp-fixed-cols td.col-actions { overflow: visible; }
     #sequencesTable .col-resize { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; z-index: 2; touch-action: none; }
     #sequencesTable .col-resize::after { content: ''; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 1px; background: var(--border); }
     #sequencesTable th[data-resize]:hover .col-resize::after, #sequencesTable .col-resize.dragging::after { background: var(--accent, #dc2626); width: 2px; }
@@ -1913,7 +1918,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.104</span>
+        <span class="app-version">v0.5.105</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -6923,30 +6928,68 @@
 
     let _categoryOptionsLoaded = false;
 
-    // ======= Resizable text columns in the Sequences table (v0.5.101) =======
-    // Drag a header's right edge; widths are kept in this browser as
-    // percentages. The space a column gains or gives up comes from Display
-    // Name (or Artist while Display Name itself is dragged), so the total
-    // never changes and the table doesn't reshuffle. Double-click resets.
-    const SEQ_COLW_KEY = 'sp-seq-col-widths-v2';
-    const SEQ_COLW_DEFAULT = { display: 26, seqname: 19, artist: 17, category: 19, badge: 9 };
+    // ======= Resizable text columns in the Sequences table (v0.5.101, fixed in v0.5.105) =======
+    // Drag a header's right edge and that edge follows the pointer; only that
+    // column changes, and the table gets wider or narrower (it scrolls
+    // sideways when wider than the card). Widths (px) are kept in this
+    // browser; double-click an edge to go back to the automatic layout.
+    // How: the table switches to table-layout: fixed with every header's
+    // current width pinned (automatic layout would hand the space a column
+    // gives up to the others, so the edge didn't follow the pointer).
+    const SEQ_COLW_KEY = 'sp-seq-col-widths-v3';
+    const SEQ_COL_MIN = 50;
     function seqColWidths() {
-      let w = {};
-      try { w = JSON.parse(localStorage.getItem(SEQ_COLW_KEY) || '{}') || {}; } catch (e) { w = {}; }
-      const out = {};
-      for (const c of Object.keys(SEQ_COLW_DEFAULT)) out[c] = Number(w[c]) > 0 ? Number(w[c]) : SEQ_COLW_DEFAULT[c];
-      return out;
+      try { const w = JSON.parse(localStorage.getItem(SEQ_COLW_KEY) || 'null'); return w && typeof w === 'object' ? w : null; } catch (e) { return null; }
     }
-    function applySeqColWidths(w) {
+    function seqTableHeads(t) { return Array.from(t.tHead ? t.tHead.rows[0].cells : []); }
+    // Back to the automatic layout (and the CSS default widths).
+    function unpinSeqTable(t) {
+      t.classList.remove('sp-fixed-cols');
+      t.style.width = '';
+      seqTableHeads(t).forEach((th) => { th.style.width = ''; });
+    }
+    // Fixed layout, every visible header at its current width, then any saved
+    // widths on top. Needs the table on screen to measure it.
+    function pinSeqTable(t, saved) {
+      if (!t || !t.offsetParent) return false;
+      unpinSeqTable(t);
+      const ths = seqTableHeads(t);
+      const widths = ths.map((th) => th.getBoundingClientRect().width);
+      ths.forEach((th, i) => {
+        if (!th.offsetParent) return; // hidden column (Columns menu)
+        const col = th.getAttribute('data-resize');
+        const w = col && saved && saved[col] > 0 ? Math.max(SEQ_COL_MIN, saved[col]) : widths[i];
+        th.style.width = Math.round(w) + 'px';
+      });
+      t.classList.add('sp-fixed-cols');
+      t.style.width = Math.round(ths.reduce((sum, th) => sum + (th.offsetParent ? parseFloat(th.style.width) || 0 : 0), 0)) + 'px';
+      return true;
+    }
+    function applySeqColWidths() {
       const t = document.getElementById('sequencesTable');
       if (!t) return;
-      w = w || seqColWidths();
-      for (const c of Object.keys(SEQ_COLW_DEFAULT)) t.style.setProperty('--w-' + c, w[c].toFixed(2) + '%');
+      const saved = seqColWidths();
+      if (saved) pinSeqTable(t, saved); else unpinSeqTable(t);
+    }
+    // The table can't be measured while its page is hidden; apply saved
+    // widths once it shows up.
+    let _seqColWatch = null;
+    function watchSeqColWidths() {
+      const t = document.getElementById('sequencesTable');
+      if (!t || _seqColWatch || typeof ResizeObserver === 'undefined') return;
+      let wasShown = false;
+      _seqColWatch = new ResizeObserver(() => {
+        const shown = !!t.offsetParent;
+        if (shown && !wasShown && seqColWidths() && !t.classList.contains('sp-fixed-cols')) applySeqColWidths();
+        wasShown = shown;
+      });
+      _seqColWatch.observe(t);
     }
     function initSeqColResize() {
       const t = document.getElementById('sequencesTable');
       if (!t || t.__spResize) return;
       t.__spResize = true;
+      watchSeqColWidths();
       t.querySelectorAll('th[data-resize]').forEach((th) => {
         const col = th.getAttribute('data-resize');
         const h = document.createElement('span');
@@ -6956,35 +6999,31 @@
         h.addEventListener('dblclick', (e) => {
           e.stopPropagation();
           try { localStorage.removeItem(SEQ_COLW_KEY); } catch (err) {}
-          applySeqColWidths();
+          unpinSeqTable(t);
         });
         h.addEventListener('pointerdown', (e) => {
           e.preventDefault(); e.stopPropagation();
-          const slack = col === 'display' ? 'artist' : 'display';
-          const start = seqColWidths();
-          // Pixels per percent, measured from the text columns themselves (the
-          // fixed-size columns take their share first), so the edge follows
-          // the pointer.
-          let pxSum = 0, pctSum = 0;
-          t.querySelectorAll('th[data-resize]').forEach((x) => { pxSum += x.getBoundingClientRect().width; pctSum += start[x.getAttribute('data-resize')]; });
-          const pxPerPct = pxSum > 0 && pctSum > 0 ? pxSum / pctSum : (t.getBoundingClientRect().width || 1400) / 100;
-          const minPct = 60 / pxPerPct;  // no column narrower than ~60px
+          if (!pinSeqTable(t, seqColWidths())) return;
           const startX = e.clientX;
-          let cur = start;
+          const startW = parseFloat(th.style.width) || th.getBoundingClientRect().width;
+          const startTable = parseFloat(t.style.width) || t.getBoundingClientRect().width;
           h.classList.add('dragging');
+          document.body.style.cursor = 'col-resize';
           try { h.setPointerCapture(e.pointerId); } catch (err) {}
           const move = (ev) => {
-            let d = (ev.clientX - startX) / pxPerPct;
-            d = Math.max(minPct - start[col], Math.min(start[slack] - minPct, d));
-            cur = { ...start, [col]: start[col] + d, [slack]: start[slack] - d };
-            applySeqColWidths(cur);
+            const w = Math.max(SEQ_COL_MIN, Math.round(startW + ev.clientX - startX));
+            th.style.width = w + 'px';
+            t.style.width = Math.round(startTable + (w - startW)) + 'px';
           };
           const up = () => {
             h.classList.remove('dragging');
+            document.body.style.cursor = '';
             h.removeEventListener('pointermove', move);
             h.removeEventListener('pointerup', up);
             h.removeEventListener('pointercancel', up);
-            try { localStorage.setItem(SEQ_COLW_KEY, JSON.stringify(cur)); } catch (err) {}
+            const w = {};
+            t.querySelectorAll('th[data-resize]').forEach((x) => { if (x.offsetParent) w[x.getAttribute('data-resize')] = Math.round(parseFloat(x.style.width) || x.getBoundingClientRect().width); });
+            try { localStorage.setItem(SEQ_COLW_KEY, JSON.stringify(w)); } catch (err) {}
           };
           h.addEventListener('pointermove', move);
           h.addEventListener('pointerup', up);
@@ -6992,7 +7031,6 @@
         });
         th.appendChild(h);
       });
-      applySeqColWidths();
     }
 
     async function loadSequences() {
@@ -7029,6 +7067,8 @@
       // toolbar should hide).
       updateBulkToolbar();
       syncSelectAllState();
+      // Saved column widths need the rows in place to measure the others.
+      requestAnimationFrame(applySeqColWidths);
     }
 
     // Songs listed more than once in the synced playlist (v0.33.249+).
@@ -7277,6 +7317,7 @@
       if (!t) return;
       SEQ_COLS.concat(SEQ_BUTTONS).forEach(c => { if (!c.fixed) t.classList.toggle('hide-' + c.key, _seqHiddenCols.has(c.key)); });
       t.querySelectorAll('tr').forEach(orderSeqCells);
+      applySeqColWidths(); // saved widths: re-pin for the columns now shown
     }
     function setSeqColumnVisible(key, visible) {
       if (visible) { _seqHiddenCols.delete(key); _seqShownCols.add(key); }

@@ -408,7 +408,7 @@ app.get('/', async (req, res) => {
     const sequences = db.prepare(`
       SELECT id, name, display_name, artist, category, image_url, badge,
              duration_seconds, votable, jukeboxable,
-             last_played_at, plays_since_hidden
+             last_played_at, plays_since_hidden, cooldown_minutes, cooldown
       FROM sequences
       WHERE visible = 1 AND active = 1 AND is_psa = 0
       ORDER BY display_order, display_name
@@ -416,7 +416,11 @@ app.get('/', async (req, res) => {
 
     const { bustSequenceCovers } = require('./lib/cover-art');
     // Category view: drop disabled categories, group into category order.
-    const sequencesBusted = bustSequenceCovers(require('./lib/categories').applyCategoryView(sequences, cfg));
+    // Cooldown (v0.5.100): cooling-down songs are left out, or kept and
+    // marked when the show keeps them on the page (same as /api/state).
+    const sequencesBusted = bustSequenceCovers(
+      require('./lib/cooldown').applyToList(require('./lib/categories').applyCategoryView(sequences, cfg), cfg)
+        .map(({ cooldown_minutes, cooldown, ...rest }) => (cooldown && typeof cooldown === 'object' ? { ...rest, cooldown } : rest)));
 
     const voteCounts = db.prepare(`
       SELECT sequence_name, COUNT(*) AS count FROM votes

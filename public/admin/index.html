@@ -10,7 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/admin/ui-new.css?v=5104">
-  <script src="/admin/ui-new.js?v=5103"></script>
+  <script src="/admin/user-prefs.js?v=1"></script>
+  <script src="/admin/ui-new.js?v=5104"></script>
   <script src="/admin/audio-normalizer.js?v=4"></script>
   <script src="/admin/sections.js?v=3"></script>
   <script src="/admin/social-icons.js?v=2"></script>
@@ -1965,7 +1966,7 @@
           <rect class="lp" x="8"   y="-3"  width="5" height="5" rx="1"/>
         </svg>
         <span class="app-brand-text">ShowPilot-Lite</span>
-        <span class="app-version">v0.5.117</span>
+        <span class="app-version">v0.5.118</span>
       </span>
       <span id="modePill" class="mode-pill off">OFF</span>
       <span class="header-spacer"></span>
@@ -5437,6 +5438,8 @@
         // main v0.33.209: new layout (default) unless the user chose classic.
         // Applied before the page is shown (v0.5.115), so the classic layout
         // never flashes up first while the data loads.
+        // View preferences follow the user (v0.5.118).
+        if (window.SPPrefs) window.SPPrefs.load(r.data.uiPrefs);
         if (window.SPNew) window.SPNew.apply(r.data);
         hide('loginView'); show('appView');
         await loadAll();
@@ -5533,6 +5536,7 @@
         }
         renderHeaderUser();
         // New layout before the page is shown (v0.5.115): no classic flash.
+        if (me.ok && window.SPPrefs) window.SPPrefs.load(me.data.uiPrefs);
         if (me.ok && window.SPNew) window.SPNew.apply(me.data);
         hide('loginView'); show('appView');
         await loadAll();
@@ -6483,10 +6487,10 @@
     // Top Sequences card (dashboard). "Hide PSAs" is remembered per browser.
     let _topStats = null;
     function topHidePsa() {
-      try { return localStorage.getItem('sp_top_hide_psa') === '1'; } catch (e) { return false; }
+      try { return SPPrefs.get('sp_top_hide_psa') === '1'; } catch (e) { return false; }
     }
     function toggleTopHidePsa(on) {
-      try { localStorage.setItem('sp_top_hide_psa', on ? '1' : '0'); } catch (e) {}
+      try { SPPrefs.set('sp_top_hide_psa', on ? '1' : '0'); } catch (e) {}
       if (_topStats) renderTopSequences(_topStats);
     }
     function renderTopSequences(d) {
@@ -7066,7 +7070,7 @@
     const SEQ_COLW_KEY = 'sp-seq-col-widths-v3';
     const SEQ_COL_MIN = 50;
     function seqColWidths() {
-      try { const w = JSON.parse(localStorage.getItem(SEQ_COLW_KEY) || 'null'); return w && typeof w === 'object' ? w : null; } catch (e) { return null; }
+      try { const w = JSON.parse(SPPrefs.get(SEQ_COLW_KEY) || 'null'); return w && typeof w === 'object' ? w : null; } catch (e) { return null; }
     }
     function seqTableHeads(t) { return Array.from(t.tHead ? t.tHead.rows[0].cells : []); }
     // Back to the automatic layout (and the CSS default widths).
@@ -7146,7 +7150,7 @@
         h.addEventListener('click', (e) => e.stopPropagation());
         h.addEventListener('dblclick', (e) => {
           e.stopPropagation();
-          try { localStorage.removeItem(SEQ_COLW_KEY); } catch (err) {}
+          try { SPPrefs.set(SEQ_COLW_KEY, null); } catch (err) {}
           unpinSeqTable(t);
         });
         h.addEventListener('pointerdown', (e) => {
@@ -7175,7 +7179,7 @@
             h.removeEventListener('pointercancel', up);
             const w = {};
             t.querySelectorAll('th[data-resize]').forEach((x) => { if (x.offsetParent) w[x.getAttribute('data-resize')] = Math.round(parseFloat(x.style.width) || x.getBoundingClientRect().width); });
-            try { localStorage.setItem(SEQ_COLW_KEY, JSON.stringify(w)); } catch (err) {}
+            try { SPPrefs.set(SEQ_COLW_KEY, JSON.stringify(w)); } catch (err) {}
             t.__spDragging = false;
             pinSeqTable(t, w); // fill the card again with the new proportions
           };
@@ -7426,13 +7430,13 @@
     let _seqColOrder = SEQ_DEFAULT_ORDER.slice();
     (function loadSeqColumnPrefs() {
       try {
-        const raw = JSON.parse(localStorage.getItem('sp_seq_hidden_cols') || '[]');
+        const raw = JSON.parse(SPPrefs.get('sp_seq_hidden_cols') || '[]');
         if (Array.isArray(raw)) _seqHiddenCols = new Set(raw);
         else { _seqHiddenCols = new Set(raw.hidden || []); _seqShownCols = new Set(raw.shown || []); }
       } catch (e) {}
       SEQ_COLS.forEach(c => { if (c.defaultHidden && !_seqShownCols.has(c.key)) _seqHiddenCols.add(c.key); });
       try {
-        const saved = JSON.parse(localStorage.getItem('sp_seq_col_order') || 'null');
+        const saved = JSON.parse(SPPrefs.get('sp_seq_col_order') || 'null');
         if (Array.isArray(saved)) {
           const known = saved.filter(k => SEQ_DEFAULT_ORDER.includes(k));
           SEQ_DEFAULT_ORDER.forEach((k, i) => {
@@ -7450,8 +7454,8 @@
 
     function saveSeqColumnPrefs() {
       try {
-        localStorage.setItem('sp_seq_hidden_cols', JSON.stringify({ hidden: Array.from(_seqHiddenCols), shown: Array.from(_seqShownCols) }));
-        localStorage.setItem('sp_seq_col_order', JSON.stringify(_seqColOrder));
+        SPPrefs.set('sp_seq_hidden_cols', JSON.stringify({ hidden: Array.from(_seqHiddenCols), shown: Array.from(_seqShownCols) }));
+        SPPrefs.set('sp_seq_col_order', JSON.stringify(_seqColOrder));
       } catch (e) {}
     }
 
@@ -7645,18 +7649,18 @@
     function setSeqCompact(on) {
       const t = document.getElementById('sequencesTable');
       if (t) t.classList.toggle('seq-compact', !!on);
-      try { localStorage.setItem('sp_seq_compact', on ? '1' : '0'); } catch (e) {}
+      try { SPPrefs.set('sp_seq_compact', on ? '1' : '0'); } catch (e) {}
     }
     // Visible / Vote / Jukebox / PSA as icons instead of switches (per browser).
     function setSeqFlagIcons(on) {
       const t = document.getElementById('sequencesTable');
       if (t) t.classList.toggle('seq-flag-icons', !!on);
-      try { localStorage.setItem('sp_seq_flag_icons', on ? '1' : '0'); } catch (e) {}
+      try { SPPrefs.set('sp_seq_flag_icons', on ? '1' : '0'); } catch (e) {}
       if (typeof applySeqColWidths === 'function') applySeqColWidths();
     }
     (function initSeqFlagIcons() {
       let on = false;
-      try { on = localStorage.getItem('sp_seq_flag_icons') === '1'; } catch (e) {}
+      try { on = SPPrefs.get('sp_seq_flag_icons') === '1'; } catch (e) {}
       const apply = () => {
         const cb = document.getElementById('seqFlagIcons');
         if (cb) cb.checked = on;
@@ -7667,7 +7671,7 @@
     })();
     (function initSeqCompact() {
       let on = false;
-      try { on = localStorage.getItem('sp_seq_compact') === '1'; } catch (e) {}
+      try { on = SPPrefs.get('sp_seq_compact') === '1'; } catch (e) {}
       const apply = () => {
         const cb = document.getElementById('seqCompact');
         if (cb) cb.checked = on;
@@ -10238,7 +10242,7 @@
       const el = document.getElementById('showPlayerUpdateBanner');
       if (!el) return;
       let dismissed = '';
-      try { dismissed = localStorage.getItem('sp_player_update_dismissed') || ''; } catch (e) {}
+      try { dismissed = SPPrefs.get('sp_player_update_dismissed') || ''; } catch (e) {}
       if (!u || (!u.belowRequired && dismissed === u.kind + ':' + u.latest)) { el.style.display = 'none'; el.innerHTML = ''; return; }
       const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const danger = !!u.belowRequired;
@@ -10260,7 +10264,7 @@
       el.style.display = '';
     }
     function dismissShowPlayerUpdate(key) {
-      try { localStorage.setItem('sp_player_update_dismissed', key); } catch (e) {}
+      try { SPPrefs.set('sp_player_update_dismissed', key); } catch (e) {}
       const el = document.getElementById('showPlayerUpdateBanner');
       if (el) el.style.display = 'none';
     }

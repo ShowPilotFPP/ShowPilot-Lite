@@ -375,6 +375,16 @@
       '</div>'), pane.firstChild);
 
     document.getElementById('spnVc').addEventListener('click', () => window.toggleViewerControl());
+    // The Viewer QR Code (v0.5.119, mirrors ShowPilot v0.33.278-master.4):
+    // the classic dashboard's own cards, moved under the new dashboard so the
+    // same code keeps showing, copying and downloading it. Before this they
+    // were hidden with the rest of the classic dashboard.
+    const qr = ['qrCard', 'qrNoUrlCard'].map((id) => document.getElementById(id)).filter(Boolean);
+    if (qr.length) {
+      const wrap = el('<section class="spn-qr" aria-label="Viewer QR code"></section>');
+      qr.forEach((c) => wrap.appendChild(c));
+      document.getElementById('spnDash').appendChild(wrap);
+    }
     // The out-of-date show player banner (beta.18+) stays visible, above the new dashboard.
     const upd = document.getElementById('showPlayerUpdateBanner');
     if (upd) pane.insertBefore(upd, pane.firstChild);

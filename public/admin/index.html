@@ -5434,10 +5434,12 @@
         window._ofCurrentUser = r.data;
         syncThemeWithServer(r.data);
         renderHeaderUser();
+        // main v0.33.209: new layout (default) unless the user chose classic.
+        // Applied before the page is shown (v0.5.115), so the classic layout
+        // never flashes up first while the data loads.
+        if (window.SPNew) window.SPNew.apply(r.data);
         hide('loginView'); show('appView');
         await loadAll();
-        // main v0.33.209: new layout (default) unless the user chose classic.
-        if (window.SPNew) window.SPNew.apply(r.data);
         // Reopen the section + sub-page named in the address, then keep the
         // address in step with navigation (v0.33.222+).
         restoreSectionFromUrl();
@@ -5530,10 +5532,10 @@
           syncThemeWithServer(me.data);
         }
         renderHeaderUser();
+        // New layout before the page is shown (v0.5.115): no classic flash.
+        if (me.ok && window.SPNew) window.SPNew.apply(me.data);
         hide('loginView'); show('appView');
         await loadAll();
-        // main v0.33.209: new layout (default) unless the user chose classic.
-        if (me.ok && window.SPNew) window.SPNew.apply(me.data);
         restoreSectionFromUrl();
         if (r.data?.mustChangePassword) showChangePasswordModal(true);
         // Clear sensitive fields

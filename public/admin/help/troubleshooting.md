@@ -32,7 +32,7 @@ Viewers usually see a message saying why. Match it to the list below.
 The admin header says **plugin offline** or **plugin never connected**, and the **Plugin** tab shows **Offline** or **Never seen**. ShowPilot-Lite counts the ShowPilot plugin as online while it has checked in during the last minute.
 
 1. Make sure FPP is running and the **ShowPilot** plugin is installed alongside ShowPilot-Lite.
-2. Check the ShowPilot plugin's **Server URL** is `http://127.0.0.1:3100`, since ShowPilot-Lite runs on the same box.
+2. Check the ShowPilot plugin's **ShowPilot Server URL** is `http://127.0.0.1:3100`, since ShowPilot-Lite runs on the same box.
 3. Check the plugin's **Show Token** matches the one on ShowPilot-Lite's **Plugin** tab exactly. A wrong token is refused.
 4. Look at the logs in FPP under **Status/Control › Logs**.
 5. If the Dashboard shows a red banner saying the plugin needs updating, update it in FPP's **Plugin Manager**.

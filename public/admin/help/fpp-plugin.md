@@ -36,7 +36,7 @@ The first time, sign in with **admin** / **admin** and choose a new password. Se
 
 ## 3. Install the ShowPilot plugin
 
-1. In FPP's **Plugin Manager**, install the **ShowPilot** plugin (from the list, or with its install address in **Manual Add**).
+1. In FPP's **Plugin Manager**, install the **ShowPilot Blackbox** plugin (from the list, or with its install address in **Manual Add**).
 2. In ShowPilot-Lite, open the **Plugin** tab and press **Copy** next to **Show Token (for ShowPilot Plugin)**.
 
 > **Careful:** Treat the Show Token like a password. Anyone who has it can control your show.
@@ -47,7 +47,7 @@ Open the ShowPilot plugin's settings in FPP under **Content Setup › ShowPilot*
 
 | Plugin setting | What to enter |
 |---|---|
-| **Server URL** | `http://127.0.0.1:3100`. ShowPilot-Lite runs on the same box, on port 3100. No `/admin` and no slash at the end. |
+| **ShowPilot Server URL** | (Called **Server URL** before plugin 0.14.24.) `http://127.0.0.1:3100`. ShowPilot-Lite runs on the same box, on port 3100. No `/admin` and no slash at the end. |
 | **Show Token** | The token you copied from ShowPilot-Lite's **Plugin** tab. |
 | **Remote Playlist** | The FPP playlist holding the songs viewers can pick. |
 | **Interrupt schedule** | Turn on if viewer picks should play right away instead of after the current song. |
@@ -92,7 +92,7 @@ ShowPilot-Lite's log is written to `plugin-ShowPilot-Lite.log` in FPP's logs, wh
 ## If it won't connect
 
 - **The admin won't open:** check ShowPilot-Lite finished installing without errors in the Plugin Manager, then try `http://<your FPP address>:3100/admin/` directly. Restarting the FPP box starts ShowPilot-Lite again.
-- **Never seen** or **Offline**: check the ShowPilot plugin's **Server URL** is `http://127.0.0.1:3100`.
+- **Never seen** or **Offline**: check the ShowPilot plugin's **ShowPilot Server URL** is `http://127.0.0.1:3100`.
 - Check the **Show Token** in the plugin matches the one on ShowPilot-Lite's **Plugin** tab exactly, with no spaces at either end. A wrong token is refused.
 - Look at the logs in FPP under **Status/Control › Logs**.
 - **Online but no songs**: make sure **Remote Playlist** names the right playlist, then press **Sync Now**. An empty playlist is ignored, so it never wipes your song list.

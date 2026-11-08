@@ -34,7 +34,7 @@ Go to **Settings › General** and fill in **Show name**. It becomes the browser
 ShowPilot-Lite doesn't play anything itself. FPP runs the show, and the separate **ShowPilot** plugin in FPP tells ShowPilot-Lite what's playing and plays what viewers pick.
 
 1. In ShowPilot-Lite, open **Plugin** and click **Copy** next to the **Show Token**.
-2. Install the ShowPilot plugin from FPP's **Plugin Manager**, open its settings under **Content Setup › ShowPilot**, and fill in the **Server URL** (`http://127.0.0.1:3100`, because ShowPilot-Lite is on the same box) and the **Show Token**.
+2. Install the ShowPilot plugin from FPP's **Plugin Manager**, open its settings under **Content Setup › ShowPilot**, and fill in the **ShowPilot Server URL** (`http://127.0.0.1:3100`, because ShowPilot-Lite is on the same box) and the **Show Token**.
 3. Back in ShowPilot-Lite, the plugin status changes to **plugin online**.
 
 Treat the show token like a password: anyone who has it can control your show. Full steps are in [Connecting your show player](help:fpp-plugin).

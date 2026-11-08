@@ -13,7 +13,7 @@ This tab shows whether the ShowPilot plugin in Falcon Player (FPP) is talking to
 
 The status refreshes on its own every few seconds. The same online/offline state is shown at the top of every admin page.
 
-> **Tip:** If it says **Offline**, check that FPP is running and that the ShowPilot plugin's **Server URL** is `http://127.0.0.1:3100`. If it says **Never seen**, the plugin hasn't been paired yet: start with the token below. More help in [Troubleshooting](help:troubleshooting).
+> **Tip:** If it says **Offline**, check that FPP is running and that the ShowPilot plugin's **ShowPilot Server URL** is `http://127.0.0.1:3100`. If it says **Never seen**, the plugin hasn't been paired yet: start with the token below. More help in [Troubleshooting](help:troubleshooting).
 
 A sync is what fills your [Sequences](help:sequences) list. If **Last sync** is old or shows the wrong number of sequences, see [Connecting your show player](help:fpp-plugin) for how syncing works.
 

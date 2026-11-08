@@ -879,8 +879,24 @@ router.get('/stats', requireAdmin, (req, res) => {
     // Visitor messages (v0.5.91+): unread count for the dashboard / tab badge.
     messagesEnabled: cfg.visitor_messages_enabled === 1,
     unreadMessages: require('../lib/visitor-messages').unreadCount(),
+    fpp: require('../lib/fpp-monitor').summary(), // v0.5.125: Dashboard FPP card
     pendingMessages: require('../lib/visitor-messages').pendingCount(), // waiting to go on the message wall
   });
+});
+
+// ---- FPP monitor (v0.5.125+, lib/fpp-monitor.js) ----
+// GET → everything the FPP page shows. Polling it also asks the show player
+// to report every second while the page is open.
+router.get('/fpp', requireAdmin, (req, res) => {
+  res.json(require('../lib/fpp-monitor').adminState(getConfig()));
+});
+// POST { action: startPlaylist|stopGracefully|stopNow|preset|restartFppd, name? }
+router.post('/fpp/command', requireAdmin, (req, res) => {
+  const b = req.body || {};
+  const r = require('../lib/fpp-monitor').command(String(b.action || ''), b.name, req.user && req.user.username);
+  if (r.error) return res.status(400).json(r);
+  console.log(`[fpp] ${req.user && req.user.username} asked the show player to ${b.action}${b.name ? ' "' + String(b.name).slice(0, 100) + '"' : ''}`);
+  res.json(r);
 });
 
 // ---- Show buttons (v0.5.124+, lib/show-buttons.js) ----

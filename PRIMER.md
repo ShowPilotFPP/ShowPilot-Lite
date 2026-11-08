@@ -299,6 +299,15 @@ ShowPilot issue #38 (@cathelest), mirrored from main. Visitors send a short mess
 - **Box style (main v0.33.254+ / Lite v0.5.96+):** `visitor_messages_theme` 'dark' (default) | 'light' (admin "Box style", next to Accent color). `data-sp-theme` on `.sp-message-box` / `.sp-message-wall` (server markup and live from `/api/state` `messages.theme`) switches internal `--spm-*` variables (text, card/bubble/strip backgrounds, borders, shadows, fields, checkbox, focus ring, ok/error chips, near-limit counter); a template's own `--sp-message-*` variables still win over both. The wall heading is its own pill (card background) so it reads on any page; before, it was light text straight on the page and vanished on light pages. Admin preview takes `?theme=` and opens on the matching page background.
 - **Not done (nice to have later):** quick reactions (❤️ 🎄 👏).
 
+## FPP Monitor (Lite v0.5.125+ / main v0.33.278-master.13+, plugin 0.14.26+)
+
+Mirrored from main; see main's PRIMER "FPP Monitor" for the full design. A page (after Dashboard) showing the show's main FPP: state, playlist, sequence and time left, the scheduler's next playlist, health (CPU temperature and FPP sensors, CPU, memory, disk, uptime) with amber/red warnings, system info, MultiSync systems, and controls (start a playlist, run a command preset, stop gracefully, stop now, restart FPPD) with who pressed what. Plus a Dashboard strip.
+
+- **ShowPilot never connects to FPP.** The show player pushes snapshots: heartbeat answer `fppMonitor: true` → `POST /api/plugin/fpp-status`; the answer carries queued controls and `nextInSec` (5, or 1 while the page is open).
+- **Files identical to main:** `lib/fpp-monitor.js`, `public/admin/fpp-monitor.js`, help page `fpp-monitor.md`. Admin API `GET /api/admin/fpp`, `POST /api/admin/fpp/command`; `/api/admin/stats` gains `fpp`. Tab `data-tab="fpp"`, sidebar icon `fpp` in `ui-new.js` (`?v=5107`), Dashboard strip `#fppDashCard`.
+- Lite has no view-only users either, so there's no read-only mode.
+- **Checked in Lite:** main's 7 FPP Monitor scenarios (and the 7 show-button ones again) pass against Lite with the temporary harness copy (database `data/showpilot-lite.db`, cookie `showpilot_lite_session`); page screenshot reviewed.
+
 ## Show buttons (Lite v0.5.124+ / main v0.33.278-master.12+, plugin 0.14.25+)
 
 Mirrored from main; see main's PRIMER "Show buttons" for the full design. Buttons on the viewer page that run an FPP effect (.eseq), command preset or script on the show while it plays.
@@ -323,7 +332,7 @@ Mirrored from main; see main's PRIMER "Show buttons" for the full design. Button
 
 Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (small Node app behind a Cloudflare Tunnel) is in ShowPilot main's `tools/install-counter/`.
 
-## Recent state (as of v0.5.124, November 2026)
+## Recent state (as of v0.5.125, November 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -424,6 +433,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.122 | **Mirror of ShowPilot 0.33.278-master.10: races that end with the song pick a winner; Listen only dashboard.** Race with "End race when the current song ends" (or timer 0) never picked a winner — `/playing` just restarted the race on the next song. Now `/api/plugin/state` (RACE, race open) works out the seconds left (`secondsLeftInSong()`: live `/position` if fresh, else `now_playing.started_at`, both with the synced `duration_seconds`) and in the last 5 s resolves the leader via `resolveRace()`; the winner goes out with `interrupt:false`. No taps → schedule. New-layout Dashboard: Listen only no longer shows the tap-race panel and Reset votes (now a "watch, but not pick songs" note, or the still-queued requests; only Purge queue); Race shows **Taps this race** and how the race ends. `ui-new.js?v=5106`. Help: Settings › Race, Dashboard. Checked: `node --check`; ran Lite locally and replayed the race: no winner mid-song, leader handed out with `interrupt:false` at 3 s left; the same scenarios pass in main's test suite. |
 | 0.5.123 | **Mirror of ShowPilot 0.33.278-master.11: help uses "ShowPilot Server URL".** The ShowPilot Blackbox plugin (0.14.24) renamed "Server URL" to **ShowPilot Server URL**; the help pages (Getting started, Connecting your show player, Plugin, Troubleshooting) use the new name, note the old one, and name the plugin **ShowPilot Blackbox** where you install it. Help text only. Checked: every `help:` link resolves. |
 | 0.5.124 | **Mirror of ShowPilot 0.33.278-master.12: show buttons.** Viewer-page buttons that run an FPP effect (.eseq), command preset or script on the show while it plays (fog, a flood light, a prop); off by default, shared per-button wait, per-visitor gap, show-wide cap. `lib/show-buttons.js` (identical to main), `{SHOW_BUTTONS}` / `{show-buttons-dynamic-container}`, Visual Designer block, Settings → Show Buttons, help page, template reference. Needs the FPP plugin 0.14.25+. rf-compat `?v=95`. Checked: `node --check` on every changed file and the inline admin scripts; main's 7 show-button scenarios pass against Lite (see **Show buttons** above); admin page screenshot reviewed. |
+| 0.5.125 | **Mirror of ShowPilot 0.33.278-master.13: FPP Monitor.** New page after Dashboard showing the main FPP's state, playlist, sequence, time left, next scheduled playlist, health (CPU temperature and sensors, CPU, memory, disk, uptime) with amber/red warnings, system info and MultiSync systems, with controls (start a playlist, run a command preset, stop gracefully, stop now, restart FPPD) and a who-pressed-what list; plus a Dashboard strip. The show player pushes status, so it works hosted too; needs plugin 0.14.26+. Checked: `node --check` on every changed file and the inline admin scripts; main's FPP Monitor and show-button scenarios pass against Lite; page screenshot reviewed. |
 
 ---
 

@@ -38,6 +38,7 @@
         "settings-jukebox",
         "settings-voting",
         "settings-race",
+        "settings-show-buttons",
         "settings-app",
         "settings-safeguards",
         "settings-public-access",
@@ -203,6 +204,14 @@
       "file": "settings-race.md",
       "context": [
         "settings/race"
+      ]
+    },
+    "settings-show-buttons": {
+      "title": "Show Buttons",
+      "area": "Settings",
+      "file": "settings-show-buttons.md",
+      "context": [
+        "settings/show-buttons"
       ]
     },
     "settings-app": {

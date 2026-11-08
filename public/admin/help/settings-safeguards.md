@@ -45,6 +45,27 @@ The **Location preview** map shows the point and the radius, so you can check th
 
 > **Tip:** Phone location indoors or in a car can be off by a few hundred feet. A radius a little bigger than your viewing area avoids turning away people who are really there.
 
+## Show in the ShowPilot app
+
+Turn on **List my show in the ShowPilot app** and your show appears in the ShowPilot phone app for people nearby. They can open your viewer page from it. It's off until you turn it on.
+
+It needs two things, and the section tells you if either is missing:
+
+- the show location above (**Show latitude** and **Show longitude**), and
+- a **Viewer page URL** that starts with `https://` in [Settings › General](help:settings-general). Phones on cellular reach your show through it, so a home network address won't work.
+
+| Setting | What it does |
+|---|---|
+| **Name in the app** | The name people see. Leave it empty to use your show name. |
+| **Town** | Shown under the name, so people know roughly where you are. |
+| **Show to phones within (miles)** | Phones farther away than this don't see your show, even if the person asks for a bigger area. The default is **15**. |
+| **Round my location to about a mile** | On by default. The app's list and your viewer page get a spot rounded to about a mile, never your exact one. |
+| **Let the app give exact directions** | Off by default. Puts your exact spot on your show's info page so the app can offer turn-by-turn directions. Anyone can read that page. |
+
+ShowPilot checks in with the app's directory once a minute while your show is listed, sending what **What gets sent** shows: the name, town, your public address, the (rounded) location, whether the show is playing and the current song. Your show shows as live while a song is playing. Press **Check in now** to see the result straight away.
+
+Turning listing off removes your show from the app. If the directory can't be reached, ShowPilot keeps trying every minute until it's gone.
+
 ## Location code
 
 Another way to make sure viewers are really at your show: put a code on a sign in your yard, and viewers must enter it before they can vote or request.

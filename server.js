@@ -140,6 +140,8 @@ app.use('/api/admin/cloudflared', adminRouter.requireAdmin, require('./routes/cl
 app.use('/api/admin/tools/normalize', adminRouter.requireAdmin, require('./routes/normalize'));
 
 // Public viewer API
+// GET /api/public/show-info for the ShowPilot app (lib/app-listing.js).
+app.use(require('./lib/app-listing').router());
 app.use('/api', require('./routes/viewer'));
 
 // ============================================================
@@ -744,4 +746,6 @@ server.listen(config.port, config.host, () => {
 
   // Anonymous daily install count (see lib/install-count.js for exactly what's sent).
   try { require('./lib/install-count').start(); } catch (err) { /* never block startup */ }
+  // ShowPilot app listing heartbeat (only does anything when the owner turned it on).
+  try { require('./lib/app-listing').start(); } catch (err) { /* never block startup */ }
 });

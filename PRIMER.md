@@ -335,6 +335,7 @@ Same feature and code as main's `lib/app-listing.js` (see main's primer, "ShowPi
 - The public address is the origin of `viewer_url` (Settings → General); Lite has no `public_base_url`. `viewerUrl` in the check-in is that origin + `/`.
 - With listing on and rounding on, `viewer-renderer.js` leaves `audioGateLatitude/Longitude` null. Nothing in Lite's rf-compat reads them, so there is no server-watch change and no cache-buster bump.
 - Settings, admin section, help section, `/api/admin/app-listing` and `/check-in` routes match main.
+- **From v0.5.132 (mirror of ShowPilot v0.33.279-beta.8):** everything for the app is on **Settings → ShowPilot App** ("Coming soon" tag; the old App tab is renamed Install as App). Name = show name; optional town and show address (saving the address also sets the show location; with an address: Navigate button and exact pin; without: rounded, no Navigate, said on the page). The switch calls `POST /api/admin/app-listing/listed` and waits for the directory, so it lists or removes at once; edits update the listing by themselves; no Check in now button. Retired settings: `app_listing_name`, `app_listing_fuzz`, `app_listing_directions`. Lite's page says "Viewer page URL (Settings → General)" where main says Public base URL, and leaves out phone audio and the audio distance limit. Main's primer has the full design.
 
 ## Anonymous install count (from v0.5.112; mirrors ShowPilot v0.33.266)
 

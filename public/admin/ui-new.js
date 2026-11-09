@@ -98,7 +98,7 @@
     return Array.from(document.querySelectorAll('.tab-nav .tab-btn')).map(btn => {
       const tab = btn.dataset.tab;
       const pane = document.querySelector('.tab-pane[data-pane="' + tab + '"]');
-      const subs = pane ? Array.from(pane.querySelectorAll('.sub-tabs .sub-tab')).map(s => ({ id: s.dataset.subtab, label: s.textContent.trim() })) : [];
+      const subs = pane ? Array.from(pane.querySelectorAll('.sub-tabs .sub-tab')).map(s => ({ id: s.dataset.subtab, label: s.textContent.trim(), tag: s.dataset.tag || '' })) : [];
       return { tab, label: btn.textContent.trim(), subs };
     });
   }
@@ -132,7 +132,7 @@
       if (sec.subs.length) {
         const sub = el('<div class="spn-sub" data-parent="' + esc(sec.tab) + '"></div>');
         sec.subs.forEach(s => {
-          const b = el('<button type="button" class="spn-subitem" data-sub="' + esc(s.id) + '">' + esc(s.label) + '</button>');
+          const b = el('<button type="button" class="spn-subitem" data-sub="' + esc(s.id) + '">' + esc(s.label) + (s.tag ? ' <span class="sp-soon-tag">' + esc(s.tag) + '</span>' : '') + '</button>');
           b.addEventListener('click', () => go(sec.tab, s.id));
           sub.appendChild(b);
         });

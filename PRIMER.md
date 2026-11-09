@@ -335,12 +335,13 @@ Same feature and code as main's `lib/app-listing.js` (see main's primer, "ShowPi
 - The public address is the origin of `viewer_url` (Settings → General); Lite has no `public_base_url`. `viewerUrl` in the check-in is that origin + `/`.
 - With listing on and rounding on, `viewer-renderer.js` leaves `audioGateLatitude/Longitude` null. Nothing in Lite's rf-compat reads them, so there is no server-watch change and no cache-buster bump.
 - Settings, admin section, help section, `/api/admin/app-listing` and `/check-in` routes match main.
+- **From v0.5.132 (mirror of ShowPilot v0.33.279-beta.8):** everything for the app is on **Settings → ShowPilot App** ("Coming soon" tag; the old App tab is renamed Install as App). Name = show name; optional town and show address (saving the address also sets the show location; with an address: Navigate button and exact pin; without: rounded, no Navigate, said on the page). The switch calls `POST /api/admin/app-listing/listed` and waits for the directory, so it lists or removes at once; edits update the listing by themselves; no Check in now button. Retired settings: `app_listing_name`, `app_listing_fuzz`, `app_listing_directions`. Lite's page says "Viewer page URL (Settings → General)" where main says Public base URL, and leaves out phone audio and the audio distance limit. Main's primer has the full design.
 
 ## Anonymous install count (from v0.5.112; mirrors ShowPilot v0.33.266)
 
 Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (small Node app behind a Cloudflare Tunnel) is in ShowPilot main's `tools/install-counter/`.
 
-## Recent state (as of v0.5.129, November 2026)
+## Recent state (as of v0.5.132, November 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -448,6 +449,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.129 | Mirror of ShowPilot v0.33.278-master.17: **app listing distance fixed at 1 mile** for every show (`LISTING_RADIUS_MI` in `lib/app-listing.js`), not a setting; the radius field is gone from Interaction Safeguards and settings, and check-ins add `fuzzed` so the directory can allow for a rounded location. The master.17 app bridge (Listen-on-Phone player in the ShowPilot app) is main only: Lite has no phone audio. Checked: `node --check` on changed files and the admin page's inline scripts. |
 | 0.5.130 | **Mirror of ShowPilot 0.33.278-master.19: FPP Monitor uses the player's own name** (`systemName` in snapshots; `lib/fpp-monitor.js` and `public/admin/fpp-monitor.js?v=2` identical to main). |
 | 0.5.131 | **FPP Monitor removed.** Lite runs on the FPP box itself, where FPP's own pages already show this, so the page, Dashboard strip, help page, `/api/admin/fpp*` routes, `POST /api/plugin/fpp-status` and `lib/fpp-monitor.js` are gone. The heartbeat now answers `fppMonitor: false`, which tells plugins 0.14.26+ to stop sending status snapshots. Main keeps its FPP Monitor (main master.22 added per-remote health and Cockpit tiles; not mirrored). Checked: `node --check`, admin inline scripts, test server: heartbeat `fppMonitor:false`, stats 200, `/api/admin/fpp` 404, admin page loads. |
+| 0.5.132 | **Mirror of ShowPilot v0.33.279-beta.8: ShowPilot App settings page.** Everything for the official phone app is on Settings → ShowPilot App, tagged "Coming soon"; the old App tab is renamed Install as App. The app shows the show name from Settings → General, an optional town (blank stays blank) and an optional show address that also sets the show location; with an address the app gets a Navigate button and an exact pin, without one there's no Navigate button and the location stays rounded (said on the page). The listing switch lists with one click and shows the result, edits update the listing by themselves, and unticking removes it at once (no Check in now button). Checked end to end against a local copy of the show directory (list, edit, remove, re-list, retired settings ignored) and in the browser. |
 
 ---
 

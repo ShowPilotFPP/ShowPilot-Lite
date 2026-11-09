@@ -451,6 +451,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.127 | **Mirror of ShowPilot 0.33.278-master.15: miles or kilometres, automatically** from the show's location (`lib/units.js`, `GET /api/admin/units`, `show_country_code`). GPS-check and app-listing radius fields convert; the "too far" message uses the unit; rf-compat accepts `miles?|km` (cache-buster 96). Checked: `node --check`, admin inline scripts, same test-server run as main. |
 | 0.5.128 | **Mirror of ShowPilot 0.33.278-master.16: app listing directory address fixed** (check-ins go to `/api/shows` on the install counter's own hostname). |
 | 0.5.129 | Mirror of ShowPilot v0.33.278-master.17: **app listing distance fixed at 1 mile** for every show (`LISTING_RADIUS_MI` in `lib/app-listing.js`), not a setting; the radius field is gone from Interaction Safeguards and settings, and check-ins add `fuzzed` so the directory can allow for a rounded location. The master.17 app bridge (Listen-on-Phone player in the ShowPilot app) is main only: Lite has no phone audio. Checked: `node --check` on changed files and the admin page's inline scripts. |
+| 0.5.130 | **Mirror of ShowPilot 0.33.278-master.19: FPP Monitor uses the player's own name** (`systemName` in snapshots; `lib/fpp-monitor.js` and `public/admin/fpp-monitor.js?v=2` identical to main). |
 
 ---
 

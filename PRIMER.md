@@ -345,7 +345,7 @@ Same feature and code as main's `lib/app-listing.js` (see main's primer, "ShowPi
 
 Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (small Node app behind a Cloudflare Tunnel) is in ShowPilot main's `tools/install-counter/`.
 
-## Recent state (as of v0.5.125, November 2026)
+## Recent state (as of v0.5.129, November 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -450,6 +450,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.126 | **Mirror of ShowPilot 0.33.278-master.14: list your show in the ShowPilot app.** Opt-in listing in Interaction Safeguards (`lib/app-listing.js`, `GET /api/public/show-info`), product `showpilot-lite`, `hasAudio` always false, public address from `viewer_url`. With rounding on, the viewer page leaves out the show coordinates. No rf-compat change (Lite has no audio watcher). Checked: `node --check`, admin inline scripts, and the same end-to-end run as main against a local directory. |
 | 0.5.127 | **Mirror of ShowPilot 0.33.278-master.15: miles or kilometres, automatically** from the show's location (`lib/units.js`, `GET /api/admin/units`, `show_country_code`). GPS-check and app-listing radius fields convert; the "too far" message uses the unit; rf-compat accepts `miles?|km` (cache-buster 96). Checked: `node --check`, admin inline scripts, same test-server run as main. |
 | 0.5.128 | **Mirror of ShowPilot 0.33.278-master.16: app listing directory address fixed** (check-ins go to `/api/shows` on the install counter's own hostname). |
+| 0.5.129 | Mirror of ShowPilot v0.33.278-master.17: **app listing distance fixed at 1 mile** for every show (`LISTING_RADIUS_MI` in `lib/app-listing.js`), not a setting; the radius field is gone from Interaction Safeguards and settings, and check-ins add `fuzzed` so the directory can allow for a rounded location. The master.17 app bridge (Listen-on-Phone player in the ShowPilot app) is main only: Lite has no phone audio. Checked: `node --check` on changed files and the admin page's inline scripts. |
 
 ---
 

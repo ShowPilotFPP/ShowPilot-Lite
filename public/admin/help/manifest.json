@@ -14,7 +14,6 @@
       "title": "Show control",
       "docs": [
         "dashboard",
-        "fpp-monitor",
         "sequences",
         "queue",
         "messages",
@@ -91,14 +90,6 @@
       "file": "dashboard.md",
       "context": [
         "dashboard"
-      ]
-    },
-    "fpp-monitor": {
-      "title": "FPP Monitor",
-      "area": "Show control",
-      "file": "fpp-monitor.md",
-      "context": [
-        "fpp"
       ]
     },
     "sequences": {

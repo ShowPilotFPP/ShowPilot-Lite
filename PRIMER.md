@@ -340,7 +340,7 @@ Same feature and code as main's `lib/app-listing.js` (see main's primer, "ShowPi
 
 Once a day each install POSTs `{id, product: 'showpilot-lite', version, location}` to the install counter (`lib/install-count.js`). `id` is random (`config.install_id`, not in backups); `location` is the owner's opt-in map level (`off` default / `country` / `region` / `city`) and the install sends no location itself. On by default with a one-time notice; off in Settings → General → Install count, `installCount: false` in config.js, or `SHOWPILOT_NO_INSTALL_COUNT=1` / `DO_NOT_TRACK=1`. The counter (small Node app behind a Cloudflare Tunnel) is in ShowPilot main's `tools/install-counter/`.
 
-## Recent state (as of v0.5.129, November 2026)
+## Recent state (as of v0.5.132, November 2026)
 
 Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v0.5.8 was caught up in v0.5.9. The non-audio "both versions every time" rule has held.
 
@@ -448,6 +448,7 @@ Lite is in lockstep with main feature-wise after a brief drift around v0.5.7–v
 | 0.5.129 | Mirror of ShowPilot v0.33.278-master.17: **app listing distance fixed at 1 mile** for every show (`LISTING_RADIUS_MI` in `lib/app-listing.js`), not a setting; the radius field is gone from Interaction Safeguards and settings, and check-ins add `fuzzed` so the directory can allow for a rounded location. The master.17 app bridge (Listen-on-Phone player in the ShowPilot app) is main only: Lite has no phone audio. Checked: `node --check` on changed files and the admin page's inline scripts. |
 | 0.5.130 | **Mirror of ShowPilot 0.33.278-master.19: FPP Monitor uses the player's own name** (`systemName` in snapshots; `lib/fpp-monitor.js` and `public/admin/fpp-monitor.js?v=2` identical to main). |
 | 0.5.131 | **FPP Monitor removed.** Lite runs on the FPP box itself, where FPP's own pages already show this, so the page, Dashboard strip, help page, `/api/admin/fpp*` routes, `POST /api/plugin/fpp-status` and `lib/fpp-monitor.js` are gone. The heartbeat now answers `fppMonitor: false`, which tells plugins 0.14.26+ to stop sending status snapshots. Main keeps its FPP Monitor (main master.22 added per-remote health and Cockpit tiles; not mirrored). Checked: `node --check`, admin inline scripts, test server: heartbeat `fppMonitor:false`, stats 200, `/api/admin/fpp` 404, admin page loads. |
+| 0.5.132 | **Mirror of ShowPilot 0.33.280: Listen Only hides voting instructions (issue ShowPilotFPP/ShowPilot#69, reported by @jddocea).** Bug fix: `data-showpilot-pick-only` elements are hidden in Listen Only; the builders' Voting/Jukebox Instructions blocks and the Settings-form page carry it, and the renderer adds it to pages saved earlier by matching the builders' instruction markup. Feature update: `config.listen_show_list` (default 1, Settings → Jukebox → Listen only); 0 hides the voting and jukebox sections in Listen Only (renderer `shownMode` 'NONE'; `/api/state` `listenShowList`, applied live by rf-compat). Template reference documents `data-showpilot-pick-only`. `rf-compat.js?v=97`. Checked: `node --check` on changed files; headless test on a fresh Lite install: Listen Only hides the instructions and keeps the list, the setting off hides both, live and on reload, and Voting brings both back. |
 
 ---
 

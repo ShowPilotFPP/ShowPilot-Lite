@@ -17,7 +17,11 @@
 (function () {
   'use strict';
 
-  const GROUPS = ['Show control', 'Safeguards', 'Songs & categories', 'Viewer page', 'Status', 'Layout'];
+  const GROUPS = ['Show control', 'Safeguards', 'Songs & categories', 'Viewer page', 'Visitors', 'Status', 'Layout'];
+
+  // True when the Visitor Messages tile is on the layout, so the Cockpit only
+  // fetches messages while it shows them (v0.5.135).
+  const usesMessages = (layout) => (layout || []).some((t) => t && t.id === 'messages');
 
   const cfgSwitch = (id, group, label, key, hint) =>
     ({ id, group, label, kind: 'switch', key, hint, size: 1 });
@@ -65,6 +69,12 @@
     cfgSwitch('progressBar', 'Viewer page', 'Song progress bar', 'viewer_progress_bar'),
     cfgSwitch('translation', 'Viewer page', 'Translation', 'translation_enabled'),
 
+    // ---- Visitors (v0.5.135, mirror of ShowPilot v0.33.284-master.6) ----
+    // Visitor messages, newest first, with Mark read / Delete (the same
+    // GET /messages, POST /messages/read and /messages/delete the admin's
+    // Messages tab uses). Drawn by messagesHtml() in cockpit.html.
+    { id: 'messages', group: 'Visitors', label: 'Visitor messages', kind: 'messages', size: 2, hint: 'Read, mark read and delete messages from visitors' },
+
     // ---- Status (read-only) ----
     { id: 'sWatching', group: 'Status', label: 'Watching now', kind: 'status', size: 1, value: (c) => String(c.stats.activeViewers ?? 0) },
     { id: 'sVotes', group: 'Status', label: 'Votes this round', kind: 'status', size: 1, value: (c) => String(c.stats.totalVotes ?? 0) },
@@ -108,5 +118,5 @@
   // Layout ids that are copies of a repeatable tile ('spacer3' -> 'spacer').
   function baseId(id) { const m = /^(spacer)\d+$/.exec(String(id || '')); return m ? m[1] : id; }
 
-  window.SPTiles = { GROUPS, catalog, DEFAULT_LAYOUT, parseCategories, baseId };
+  window.SPTiles = { GROUPS, catalog, DEFAULT_LAYOUT, parseCategories, baseId, usesMessages };
 })();

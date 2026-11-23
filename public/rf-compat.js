@@ -106,6 +106,10 @@
     // cooldowns when a page has no #songCooldown (v0.5.110).
     sequenceUnavailable: 'sequenceUnavailable',
     queueFull: 'queueFull',
+    // A visitor removed their own request. Templates can add their own
+    // <div id="cancelSuccessful">; without one, #requestSuccessful shows
+    // "Your request was removed."
+    cancelSuccess: 'cancelSuccessful',
     alreadyVoted: 'alreadyVoted',
     // v0.5.100: a song that's cooling down. Templates can add their own
     // <div id="songCooldown">; an element inside it with
@@ -985,6 +989,8 @@
   // Listen Only (v0.33.249+): picking is closed, the page and audio stay up.
   const LISTEN_MSG = 'Requests and voting are closed for now. You can still listen along!';
   let listenOnly = !!boot.listenOnly;
+  // Visitors may remove their own waiting requests (refreshed from /api/state).
+  let viewerCancel = !!boot.viewerCancel;
   function listenOnlyBlocked() {
     if (!listenOnly) return false;
     showMessage(MSG_IDS.failed, 4000, LISTEN_MSG, LISTEN_MSG);
@@ -1016,6 +1022,35 @@
   //      `request` / `vote`. We honor all of those.
   // Removing any alias would break user-facing templates with no warning,
   // so this list is append-only.
+  // Remove one of this visitor's own waiting requests (setting "Let visitors
+  // remove their own requests"). The queue list's Remove buttons call this;
+  // templates with their own queue markup can call it with an entry's id
+  // from /api/state (entries with mine: true and no handed_off_at).
+  // The server decides: a request handed to the show player a moment
+  // before the tap is refused with "already on its way", and the list
+  // refreshes either way.
+  const CANCEL_DONE_MSG = 'Your request was removed.';
+  window.ShowPilotCancel = async function (queueId) {
+    const result = await postJson('/api/jukebox/cancel', { queueId });
+    if (result.ok) {
+      if (document.getElementById(MSG_IDS.cancelSuccess)) showMessage(MSG_IDS.cancelSuccess);
+      else showMessage(MSG_IDS.success, undefined, CANCEL_DONE_MSG);
+    } else {
+      const err = (result.data && result.data.error) || 'That didn’t work. Please try again.';
+      showMessage(MSG_IDS.failed, 4500, err, err);
+    }
+    refreshState();
+    return result.ok;
+  };
+  document.addEventListener('click', async (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('.queue-cancel[data-queue-id]') : null;
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+    btn.disabled = true;
+    try { await window.ShowPilotCancel(Number(btn.getAttribute('data-queue-id'))); }
+    finally { btn.disabled = false; }
+  });
+
   window.OpenFalconRequest = window.ShowPilotRequest;
   window.OpenFalconVote = window.ShowPilotVote;
   window.RemoteFalconRequest = window.ShowPilotRequest;
@@ -1466,6 +1501,7 @@
     const queueSizeEls = document.querySelectorAll('[data-showpilot-queue-size], [data-openfalcon-queue-size]');
     queueSizeEls.forEach(el => { el.textContent = String((data.queue || []).length); });
 
+    if (typeof data.viewerCancel === 'boolean') viewerCancel = data.viewerCancel;
     const queueListEls = document.querySelectorAll('[data-showpilot-queue-list], [data-openfalcon-queue-list]');
     if (queueListEls.length) {
       const byName = Object.fromEntries((data.sequences || []).map(s => [s.name, s]));
@@ -1474,13 +1510,25 @@
         ? '<div class="queue-empty">Queue is empty.</div>'
         // Match the server-side renderQueue shape: each entry is its own
         // <div class="queue-item"> so RF Page Builder's `.queue-list > div`
-        // selector matches.
+        // selector matches. The visitor's own requests get showpilot-mine,
+        // and a Remove button while they can still be removed (not yet
+        // handed to the show player).
         : data.queue.map(e => {
             const seq = byName[e.sequence_name];
             const name = seq ? seq.display_name : e.sequence_name;
-            return `<div class="queue-item jukebox-queue" data-seq="${escapeAttr(e.sequence_name)}">${escapeHtml(name)}</div>`;
+            const removable = viewerCancel && e.mine && !e.handed_off_at && e.id;
+            const remove = removable
+              ? `<button type="button" class="queue-cancel" data-queue-id="${Number(e.id)}" aria-label="Remove my request for ${escapeAttr(name)}">Remove</button>`
+              : '';
+            return `<div class="queue-item jukebox-queue${e.mine ? ' showpilot-mine' : ''}" data-seq="${escapeAttr(e.sequence_name)}">${escapeHtml(name)}${remove}</div>`;
           }).join('');
-      queueListEls.forEach(el => { el.innerHTML = queueHtml; });
+      // Only touch the list when it changed, so a Remove button isn't
+      // replaced under a finger between polls.
+      queueListEls.forEach(el => {
+        if (el.__spQueueHtml === queueHtml) return;
+        el.innerHTML = queueHtml;
+        el.__spQueueHtml = queueHtml;
+      });
     }
 
     // --- Sequence list live rebuild (v0.5.17+) ---

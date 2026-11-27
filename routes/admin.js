@@ -333,6 +333,7 @@ router.put('/config', requireAdmin, (req, res) => {
     // Location code (v0.5.26+)
     'location_code_enabled',
     'location_code',
+    'admin_skip_location',   // signed-in admins skip the GPS check
     // ShowPilot app listing (lib/app-listing.js)
     'app_listing_enabled',
     'app_listing_town',
